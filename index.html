@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Baby Med Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Auth View -->
+<div id="view-auth" style="display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--bg);">
+    <div class="card" style="width: 100%; max-width: 400px; padding: 30px;">
+        <h1 style="text-align: center; margin-bottom: 10px;">Baby Med Tracker</h1>
+        <h2 id="auth-title" style="text-align: center; margin-bottom: 30px; font-size: 20px;">Login</h2>
+        
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="auth-email" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <div style="position: relative;">
+                <input type="password" id="auth-password" placeholder="••••••••" style="padding-right: 40px;">
+                <span id="toggle-password-visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px; color: var(--text-muted);" onclick="togglePasswordVisibility()">👁️</span>
+            </div>
+        </div>
+        
+        <button id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleSignIn()">Login</button>
+        
+        <p style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-muted);">
+            <span id="auth-toggle-link" style="color: var(--primary); cursor: pointer; font-weight: 600;" onclick="toggleAuthMode()">Don't have an account? Sign Up</span>
+        </p>
+        <p id="forgot-password-container" style="text-align: center; margin-top: 10px; font-size: 14px; color: var(--text-muted);">
+            <span id="auth-forgot-link" style="color: var(--primary); cursor: pointer;" onclick="handleForgotPassword()">Forgot Password?</span>
+        </p>
+    </div>
+</div>
+
+<!-- Reset Password View -->
+<div id="view-reset-password" style="display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background: var(--bg-gradient);">
+    <div class="card" style="width: 100%; max-width: 400px; padding: 30px;">
+        <h1 style="text-align: center; margin-bottom: 10px;">Baby Med Tracker</h1>
+        <h2 style="text-align: center; margin-bottom: 30px; font-size: 20px;">Reset Password</h2>
+        
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="reset-password-new" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="reset-password-confirm" placeholder="••••••••">
+        </div>
+        
+        <button id="reset-password-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleResetPasswordSubmit()">Update Password</button>
+        
+        <p style="text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-muted);">
+            <span style="color: var(--primary); cursor: pointer; font-weight: 600;" onclick="window.location.href='/'">Back to Login</span>
+        </p>
+    </div>
+</div>
+
+<div id="app-container" style="display: none;">
+    <div id="banner">
+        Enable Notifications & Sound for Reminders <button onclick="enablePermissions()">Enable</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="width: 50px; height: 50px; border: 5px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 15px; font-weight: 600; color: var(--primary);">Syncing...</p>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+    <header>
+        <h1>Baby Med Tracker</h1>
+        <select id="child-selector" class="child-selector" onchange="changeChild(this.value)">
+            <!-- Populated via JS -->
+        </select>
+    </header>
+
+    <!-- VIEWS -->
+    
+    <!-- Home (Dashboard) -->
+    <main id="view-home" class="view active">
+        <div class="summary-cards" id="home-summary">
+            <!-- Populated via JS -->
+        </div>
+        <h2 style="font-size: 18px; margin-bottom: 15px;">Today's Schedule</h2>
+        <div id="timeline-container">
+            <!-- Populated via JS -->
+        </div>
+    </main>
+
+    <!-- Medicines -->
+    <main id="view-meds" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h2 style="font-size: 18px;">Medicines List</h2>
+                <button class="btn btn-primary btn-small" onclick="openMedModal()">+ Add</button>
+            </div>
+            <select id="med-filter-issue" class="btn-small" style="padding: 5px 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: var(--surface-solid); color: var(--text-main);" onchange="renderMeds()">
+                <option value="all">All Issues</option>
+                <option value="none">No Issue</option>
+            </select>
+        </div>
+        <div id="meds-list-container"></div>
+    </main>
+
+    <!-- History -->
+    <main id="view-history" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="font-size: 18px;">History & Stats</h2>
+        </div>
+        
+        <div class="tabs-sub" style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button class="btn btn-small btn-primary" id="tab-history-logs" onclick="switchHistoryTab('logs')">History</button>
+            <button class="btn btn-small btn-outline" id="tab-history-stats" onclick="switchHistoryTab('stats')">Stats</button>
+        </div>
+
+        <!-- History Logs Section -->
+        <div id="section-history-logs">
+            <div class="form-group">
+                <input type="date" id="history-date-filter" onchange="renderHistory()">
+            </div>
+            <div id="history-list-container"></div>
+        </div>
+
+        <!-- Stats Section -->
+        <div id="section-history-stats" style="display: none;">
+            <div class="card">
+                <p style="text-align: center; font-weight: 600; margin-bottom: 10px;" id="chart-title">Last 7 Days (Taken %)</p>
+                <div class="chart-container" id="chart-container">
+                    <!-- Bars via JS -->
+                </div>
+                <div style="display:flex; justify-content:center; gap: 15px; margin-top: 15px; font-size: 12px;">
+                    <span style="color:var(--green)">■ Taken</span>
+                    <span style="color:var(--red)">■ Missed</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Issues -->
+    <main id="view-issues" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="font-size: 18px;">Issues</h2>
+            <button class="btn btn-primary btn-small" onclick="openIssueModal()">+ New Issue</button>
+        </div>
+        
+        <div class="tabs-sub" style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button class="btn btn-small btn-primary" id="tab-issues-active" onclick="switchIssueTab('active')">Active</button>
+            <button class="btn btn-small btn-outline" id="tab-issues-resolved" onclick="switchIssueTab('resolved')">Resolved</button>
+        </div>
+
+        <div id="issues-list-container"></div>
+    </main>
+
+    <!-- Settings -->
+    <main id="view-settings" class="view">
+        <h2 style="font-size: 18px; margin-bottom: 15px;">Settings</h2>
+        
+        <div id="profile-container">
+            <!-- Profile card will be rendered here -->
+        </div>
+
+        <div class="card">
+            <div class="setting-item">
+                <span>Children Profiles</span>
+                <button class="btn btn-outline btn-small" onclick="openChildModal()">Manage / Add</button>
+            </div>
+            <div class="setting-item">
+                <span>Dark Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-dark" onchange="toggleDarkMode(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <span>Sound & Voice Alerts</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-sound" onchange="toggleSound(this.checked)">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <span>Trash</span>
+                <button class="btn btn-outline btn-small" onclick="window.openTrashModal()">View Trash</button>
+            </div>
+            <div class="setting-item">
+                <span>Export Data</span>
+                <button class="btn btn-primary btn-small" onclick="exportData()">Export JSON</button>
+            </div>
+            <!-- 
+            To re-enable "Erase All Data", uncomment the block below.
+            <div class="setting-item" style="border:none;">
+                <span style="color:var(--red)">Erase All Data</span>
+                <button class="btn btn-red btn-small" onclick="clearData()">Clear Data</button>
+            </div>
+            -->
+            <div class="setting-item" style="border-top: 1px solid #ccc; margin-top: 10px; padding-top: 20px;">
+                <span>Account</span>
+                <button class="btn btn-outline btn-small" onclick="handleSignOut()">Logout</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav>
+        <div class="nav-item active" onclick="switchTab('home', this)">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            Home
+        </div>
+        <div class="nav-item" onclick="switchTab('meds', this)">
+            <svg viewBox="0 0 24 24"><path d="M17 7A5 5 0 007 7L4 10a5 5 0 000 7l3 3a5 5 0 007 0l3-3a5 5 0 000-7zM8.41 18.59L5.41 15.6a3 3 0 010-4.24l2.83-2.83 5.66 5.66-2.83 2.83a3 3 0 01-2.66.57z"/></svg>
+            Meds
+        </div>
+        <div class="nav-item" onclick="switchTab('issues', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+            Issues
+        </div>
+        <div class="nav-item" onclick="switchTab('history', this)">
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8-3.58 8-8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            History
+        </div>
+        <div class="nav-item" onclick="switchTab('settings', this)">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.49-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            Settings
+        </div>
+    </nav>
+
+    <button id="fab" onclick="openMedModal()">+</button>
+</div>
+
+<!-- Custom Alert/Confirm Modal -->
+<div id="modal-alert" class="modal-overlay" style="align-items: center; justify-content: center;">
+    <div class="modal-content" style="border-radius: 24px; max-width: 400px; text-align: center;">
+        <h3 id="alert-title" style="margin-bottom: 10px;">Alert</h3>
+        <p id="alert-message" style="margin-bottom: 20px; color: var(--text-muted);"></p>
+        <div class="actions" id="alert-actions">
+            <button class="btn btn-primary" onclick="closeModal('modal-alert')">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Update Profile -->
+<div id="modal-profile" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 15px;">Update Profile</h2>
+        
+        <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05);">
+            <h3 style="font-size: 16px; margin-bottom: 10px;">Change Name</h3>
+            <div class="form-group">
+                <label>Parent Name</label>
+                <input type="text" id="profile-name" placeholder="Enter your name">
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="saveProfile()">Save Name</button>
+        </div>
+
+        <div>
+            <h3 style="font-size: 16px; margin-bottom: 10px;">Change Password</h3>
+            <div class="form-group">
+                <label>Current Password</label>
+                <input type="password" id="profile-current-password" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="profile-new-password" placeholder="••••••••">
+            </div>
+            <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="profile-confirm-password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-outline" style="width: 100%;" onclick="handleUpdatePassword()">Update Password</button>
+        </div>
+
+        <div class="actions" style="margin-top: 20px;">
+            <button class="btn btn-outline" style="width: 100%;" onclick="closeModal('modal-profile')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Trash -->
+<div id="modal-trash" class="modal-overlay">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">Trash</h2>
+            <button class="btn btn-outline btn-small" onclick="closeModal('modal-trash')">✕</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Deleted issues are kept here. You can restore them or delete them permanently.</p>
+        <div id="trash-list-container" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Trash items will be rendered here -->
+        </div>
+        <div class="actions" style="margin-top: 20px;">
+            <button class="btn btn-outline" style="width: 100%;" onclick="closeModal('modal-trash')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add/Edit Child -->
+<div id="modal-child" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 15px;" id="child-modal-title">Child Profile</h2>
+        <input type="hidden" id="child-id">
+        <div class="form-group">
+            <label>Child Name</label>
+            <input type="text" id="child-name" placeholder="E.g., John">
+        </div>
+        <div class="form-group">
+            <label>Date of Birth</label>
+            <input type="date" id="child-dob">
+        </div>
+        <div class="actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-child')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveChild()">Save Child</button>
+        </div>
+        <div id="child-list-manage" style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;"></div>
+    </div>
+</div>
+
+<!-- Modal: Add/Edit Medicine -->
+<div id="modal-med" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 15px;" id="med-modal-title">Add Medicine</h2>
+        <input type="hidden" id="med-id">
+        <input type="hidden" id="med-meet-id">
+        <div class="form-group">
+            <label>Issue (Required)</label>
+            <select id="med-issue-id">
+                <!-- Populated via JS -->
+            </select>
+        </div>
+        <div class="form-group" style="position: relative;">
+            <label>Medicine Name</label>
+            <input type="text" id="med-name" placeholder="E.g., Paracetamol" autocomplete="off" oninput="handleMedNameInput(this.value)">
+            <div id="med-autocomplete-list" class="autocomplete-items"></div>
+        </div>
+        <div class="form-group">
+            <label>Dosage</label>
+            <input type="text" id="med-dosage" placeholder="E.g., 2.5 ml">
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1">
+                <label>Start Date</label>
+                <input type="date" id="med-start">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>End Date</label>
+                <input type="date" id="med-end">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Times</label>
+            <div id="med-times-container" style="margin-bottom: 10px;">
+                <!-- Time rows will be populated here -->
+            </div>
+            <button type="button" class="btn btn-outline btn-small" style="width: 100%;" onclick="addTimeRow()">+ Add Time Slot</button>
+        </div>
+        <div class="actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-med')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveMed()">Save Medicine</button>
+        </div>
+    </div>
+</div>
+
+    </div>
+</div>
+
+<!-- Modal: Add/Edit Issue -->
+<div id="modal-issue" class="modal-overlay">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 15px;" id="issue-modal-title">Add Issue</h2>
+        <input type="hidden" id="issue-id">
+        <input type="hidden" id="issue-meet-id">
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="issue-title" placeholder="E.g., Fever, Cough">
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1">
+                <label>Doctor Name</label>
+                <input type="text" id="issue-doctor" placeholder="Dr. Smith">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>Medical Center</label>
+                <input type="text" id="issue-center" placeholder="City Hospital">
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1">
+                <label>Visit Date</label>
+                <input type="date" id="issue-meet-date">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>Next Follow-up</label>
+                <input type="date" id="issue-follow-up-date">
+            </div>
+        </div>
+        <div class="form-group" id="previous-meds-container" style="display: none;">
+            <label>Reuse Previous Medicines</label>
+            <div id="previous-meds-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;">
+                <!-- Checklist will go here -->
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Doctor Follow-up / Instructions</label>
+            <textarea id="issue-follow-up" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); background: var(--bg-gradient); color: var(--text-main); font-family: inherit;" rows="2" placeholder="Next visit, specific care..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Description (Optional)</label>
+            <textarea id="issue-desc" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); background: var(--bg-gradient); color: var(--text-main); font-family: inherit;" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Prescription Images</label>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="file" id="issue-image-input" accept="image/*" onchange="handleIssueImageSelect(event)" style="font-size: 12px; flex: 1;">
+                    <button type="button" class="btn btn-outline btn-small" onclick="window.openMedModal(null, document.getElementById('issue-id').value || 'new_issue', document.getElementById('issue-meet-id').value)">+ Add Medicine</button>
+                </div>
+                <div id="cropper-container" style="display: none; max-width: 100%; margin-top: 10px;">
+                    <img id="cropper-image" style="max-width: 100%;">
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" class="btn btn-primary btn-small" onclick="cropAndUpload()">Crop & Save</button>
+                        <button type="button" class="btn btn-outline btn-small" onclick="cancelCrop()">Cancel</button>
+                    </div>
+                </div>
+                <div id="issue-image-preview-container" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                    <!-- Multiple previews will go here -->
+                </div>
+                <input type="hidden" id="issue-image-data">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="issue-status">
+                <option value="active">Active</option>
+                <option value="resolved">Resolved</option>
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-issue')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveIssue()">Save Issue</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Zoom Modal -->
+<div id="modal-zoom" class="modal-overlay" style="align-items: center; justify-content: center; background: rgba(0,0,0,0.9);" onclick="window.closeModal('modal-zoom')">
+    <div style="max-width: 90%; max-height: 90%; position: relative;" onclick="event.stopPropagation()">
+        <img id="zoom-img" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+        <button class="btn btn-red btn-small" style="position: absolute; top: -40px; right: 0;" onclick="window.closeModal('modal-zoom')">Close</button>
+    </div>
+</div>
+
+<!-- Gallery Modal -->
+<div id="modal-gallery" class="modal-overlay" style="align-items: center; justify-content: center; background: rgba(0,0,0,0.95);">
+    <div class="modal-content" style="background: transparent; padding: 0; border: none; box-shadow: none; width: 100%; max-width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <div style="position: absolute; top: 20px; right: 20px; z-index: 1000;">
+            <button class="btn btn-red btn-small" onclick="window.closeModal('modal-gallery')">Close</button>
+        </div>
+        <div id="gallery-container" style="width: 100%; height: 80%; display: flex; align-items: center; justify-content: center; position: relative;">
+            <button id="gallery-prev" class="btn btn-outline btn-small" style="position: absolute; left: 10px; z-index: 1001; background: rgba(255,255,255,0.2); color: white; border-color: white; border-radius: 50%; width: 40px; height: 40px; padding: 0;">&lt;</button>
+            <img id="gallery-img" style="max-width: 90%; max-height: 100%; object-fit: contain; border-radius: 8px;">
+            <button id="gallery-next" class="btn btn-outline btn-small" style="position: absolute; right: 10px; z-index: 1001; background: rgba(255,255,255,0.2); color: white; border-color: white; border-radius: 50%; width: 40px; height: 40px; padding: 0;">&gt;</button>
+        </div>
+        <div id="gallery-counter" style="color: white; margin-top: 20px; font-weight: 600;"></div>
+    </div>
+</div>
+
+<style>
+.autocomplete-items {
+    position: absolute;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-bottom: none;
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--surface-solid);
+    border-radius: 0 0 12px 12px;
+    box-shadow: var(--shadow);
+    max-height: 200px;
+    overflow-y: auto;
+}
+.autocomplete-items div {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.autocomplete-items div:hover {
+    background-color: var(--bg-gradient);
+}
+.autocomplete-active {
+    background-color: var(--primary) !important;
+    color: #ffffff;
+}
+
+.tabs-sub .btn {
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-size: 12px;
+}
+</style>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
