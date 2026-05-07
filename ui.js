@@ -333,7 +333,7 @@ export function showLoading(show) {
 // --- CUSTOM DIALOGS ---
 export function customAlert(message, title = "Alert") {
     document.getElementById('alert-title').innerText = title;
-    document.getElementById('alert-message').innerText = message;
+    document.getElementById('alert-message').innerHTML = message;
     document.getElementById('alert-actions').innerHTML = '<button class="btn btn-primary" onclick="window.closeModal(\'modal-alert\')">OK</button>';
     openModal('modal-alert');
 }

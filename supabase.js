@@ -155,7 +155,10 @@ export async function testConnection() {
                 console.error("Table 'children' not found. Please ensure your database schema is set up.");
             } else if (error.message === 'Failed to fetch' || (error.status === 0)) {
                 console.error("CRITICAL: Supabase endpoint unreachable. This usually means the project is paused, the URL is wrong, or your internet is blocking it.");
-                customAlert("Database connection failed. Your Supabase project might be paused. Please log in to the Supabase dashboard and restore it.", "Connection Error");
+                customAlert(
+                    "Database connection failed. Your Supabase project might be paused due to inactivity. <br><br>Please log in to the Supabase dashboard and restore it.", 
+                    "Connection Error"
+                );
             }
             return false;
         }
@@ -163,9 +166,12 @@ export async function testConnection() {
         console.log("Supabase connection test successful! Found children data:", data);
         return true;
     } catch (err) {
-        if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        if (err.message === 'Failed to fetch' || err.name === 'TypeError' || (err.message && err.message.includes('fetch'))) {
             console.error("CRITICAL: Supabase endpoint unreachable (Exception). This usually means the project is paused or the URL is wrong.");
-            customAlert("Cannot connect to Supabase. This often happens if the project is paused or there is a network issue.", "Connection Error");
+            customAlert(
+                "Cannot connect to Supabase. This often happens if the project is paused or there is a network issue. <br><br>Check your internet connection and verify the project state in Supabase dashboard.", 
+                "Connection Error"
+            );
         } else {
             console.error("Supabase connection test exception:", err);
         }

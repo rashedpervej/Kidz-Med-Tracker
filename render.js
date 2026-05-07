@@ -100,53 +100,151 @@ export function renderHome() {
         const initials = activeChild.name ? activeChild.name[0].toUpperCase() : '?';
         const ageObj = activeChild.dob ? getDetailedAge(activeChild.dob) : { main: 'N/A', unit: '', sub: '' };
         
+        // --- Calculate Dynamic Health Summary ---
+        const today = getYYYYMMDD(new Date());
+        const nowTime = new Date().toTimeString().substring(0,5);
+
+        // 1. Active Issues
+        const activeIssues = (state.issues || []).filter(i => 
+            i.child_id && state.activeChildId &&
+            i.child_id.toString() === state.activeChildId.toString() && 
+            i.status === 'active' && !i.is_deleted
+        );
+
+        // 2. Meds remaining today
+        const activeMeds = (state.medicines || []).filter(m => {
+            if (!m.child_id || !state.activeChildId) return false;
+            const isChildMatch = m.child_id.toString() === state.activeChildId.toString();
+            const isDateMatch = m.start_date <= today && m.end_date >= today;
+            const issue = m.issue_id ? (state.issues || []).find(i => i.id.toString() === m.issue_id.toString()) : null;
+            if (issue && issue.is_deleted) return false;
+            const isIssueActive = issue ? issue.status === 'active' : true;
+            return isChildMatch && isDateMatch && isIssueActive;
+        });
+
+        let totalMedsToday = 0;
+        let medsTakenToday = 0;
+        let nextMed = null;
+
+        activeMeds.forEach(m => {
+            if (!m.times) return;
+            m.times.forEach(t => {
+                totalMedsToday++;
+                const log = (state.logs || []).find(l => 
+                    l.medicine_id && m.id &&
+                    l.medicine_id.toString() === m.id.toString() && 
+                    l.datetime.startsWith(today) && 
+                    l.datetime.includes(t) &&
+                    l.status === 'Taken'
+                );
+                if (log) medsTakenToday++;
+                else if (!nextMed || t < nextMed.time) {
+                    // Only consider meds as "next" if they are ahead or pending
+                    if (t >= nowTime) {
+                         if (!nextMed || t < nextMed.time) nextMed = { name: m.name, time: t };
+                    }
+                }
+            });
+        });
+
+        const medsRemaining = totalMedsToday - medsTakenToday;
+
+        // 3. Next Doctor Visit
+        const nextVisit = activeIssues
+            .flatMap(i => i.meets || [])
+            .filter(m => m.date >= today)
+            .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+        const isEverythingDone = activeIssues.length === 0 && medsRemaining === 0;
+
+        let statusSectionHtml = '';
+        if (isEverythingDone) {
+            statusSectionHtml = `
+                <div class="health-success-box">
+                    <div class="success-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                    <div class="success-text">
+                        <h4>All Good Today</h4>
+                        <p>No active issues. All medicines taken.</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            statusSectionHtml = `
+                <div class="health-status-list">
+                    ${activeIssues.length > 0 ? `
+                        <div class="status-item-card" onclick="window.switchTab('issues')">
+                            <div class="status-item-icon issues-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <div class="status-item-content">
+                                <h4>${activeIssues.length} Active Issue${activeIssues.length > 1 ? 's' : ''}</h4>
+                                <p>${activeIssues.map(i => i.title).join(', ')}</p>
+                            </div>
+                            <div class="status-chevron">›</div>
+                        </div>
+                    ` : ''}
+
+                    ${medsRemaining > 0 ? `
+                        <div class="status-item-card" onclick="window.switchTab('meds')">
+                            <div class="status-item-icon meds-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                            </div>
+                            <div class="status-item-content">
+                                <h4>${medsRemaining} Med${medsRemaining > 1 ? 's' : ''} remaining today</h4>
+                                <p>${nextMed ? `Next: ${nextMed.name} • ${formatTimeFriendly(nextMed.time)}` : 'Wait for schedule'}</p>
+                            </div>
+                            <div class="status-chevron">›</div>
+                        </div>
+                    ` : ''}
+
+                    ${nextVisit ? `
+                        <div class="status-item-card">
+                            <div class="status-item-icon visit-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            </div>
+                            <div class="status-item-content">
+                                <h4>Next Doctor Visit</h4>
+                                <p>${formatDateDisplay(nextVisit.date)}${nextVisit.time ? ' • ' + formatTimeFriendly(nextVisit.time) : ''}</p>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
         profileContainer.innerHTML = `
-            <div class="child-profile-card">
-                <div class="card-header-row">
-                    <div class="child-identity">
-                        <div class="child-avatar-large">${initials}</div>
-                        <div class="child-name-meta">
-                            <h2 class="child-name">${activeChild.name}</h2>
-                            <span class="child-meta">Baby ${activeChild.gender || 'Girl'}</span>
+            <div class="child-profile-card ${isEverythingDone ? 'card-all-good' : ''}">
+                <div class="card-layout-main">
+                    <div class="card-left">
+                        <div class="identity-section">
+                            <div class="child-avatar-large">${initials}</div>
+                            <div class="child-name-meta">
+                                <h2 class="child-name">${activeChild.name}</h2>
+                                <span class="child-meta">Baby ${activeChild.gender || 'Girl'}</span>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="child-profile-stats">
-                    <div class="age-display">
-                        <div class="age-main-box">
-                            <span class="age-val">${ageObj.main}</span>
-                        </div>
-                        <div class="age-text-group">
-                            <span class="age-unit-label">${ageObj.unit}</span>
-                            <span class="age-sub-label">${ageObj.sub}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="v-stats-group">
-                        <div class="stat-row">
-                            <div class="stat-icon-box">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 2h10M7 22h10"/></svg>
+                        <div class="age-block-display">
+                            <div class="age-main-square">
+                                <span class="age-num">${ageObj.main}</span>
                             </div>
-                            <div class="stat-info">
-                                <span class="stat-label-text">Length:</span>
-                                <span class="stat-value-text">${activeChild.height ? activeChild.height + ' cm' : '--'}</span>
+                            <div class="age-labels">
+                                <span class="age-top">${ageObj.unit}</span>
+                                <span class="age-bottom">${ageObj.sub}</span>
                             </div>
                         </div>
-                        <div class="stat-row">
-                            <div class="stat-icon-box">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15c0 3.31 2.69 6 6 6s6-2.69 6-6M12 2v2M8 2h8M12 4v10M9 6h6"/></svg>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-label-text">Weight:</span>
-                                <span class="stat-value-text">${activeChild.weight ? activeChild.weight + ' kg' : '--'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="child-birth-date">
-                    Birth: ${activeChild.dob ? formatDateDisplay(activeChild.dob) : 'N/A'}
+                        <div class="birth-date-bottom">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            Birth: ${activeChild.dob ? formatDateDisplay(activeChild.dob) : 'N/A'}
+                        </div>
+                    </div>
+
+                    <div class="card-right">
+                        ${statusSectionHtml}
+                    </div>
                 </div>
             </div>
         `;

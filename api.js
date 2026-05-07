@@ -10,21 +10,34 @@ export async function fetchAllData() {
     const uid = user.id;
 
     try {
-        const [childrenRes, medicinesRes, logsRes, issuesRes, masterRes, profileRes, meetsRes] = await Promise.all([
-            supabaseClient.from('children').select('*').eq('user_id', uid),
-            supabaseClient.from('medicines').select('*').eq('user_id', uid),
-            supabaseClient.from('logs').select('*').eq('user_id', uid),
-            supabaseClient.from('issues').select('*').eq('user_id', uid),
-            supabaseClient.from('medicine_master').select('*'),
-            supabaseClient.from('profiles').select('*').eq('id', uid).single(),
-            supabaseClient.from('meets').select('*').eq('user_id', uid).order('date', { ascending: true })
-        ]);
+        console.log("Fetching data for user:", uid);
+        
+        const fetchTable = async (table, query = supabaseClient.from(table).select('*')) => {
+            try {
+                const { data, error, status } = await query;
+                if (error) {
+                    console.error(`Error fetching ${table}:`, error.message, "Status:", status);
+                    return { data: [], error };
+                }
+                return { data, error: null };
+            } catch (e) {
+                console.error(`Exception fetching ${table}:`, e.message);
+                return { data: [], error: e };
+            }
+        };
 
-        if (childrenRes.error) throw childrenRes.error;
-        if (medicinesRes.error) throw medicinesRes.error;
-        if (logsRes.error) throw logsRes.error;
-        if (issuesRes.error) throw issuesRes.error;
-        if (masterRes.error) throw masterRes.error;
+        const childrenRes = await fetchTable('children', supabaseClient.from('children').select('*').eq('user_id', uid));
+        const medicinesRes = await fetchTable('medicines', supabaseClient.from('medicines').select('*').eq('user_id', uid));
+        const logsRes = await fetchTable('logs', supabaseClient.from('logs').select('*').eq('user_id', uid));
+        const issuesRes = await fetchTable('issues', supabaseClient.from('issues').select('*').eq('user_id', uid));
+        const masterRes = await fetchTable('medicine_master');
+        const profileRes = await supabaseClient.from('profiles').select('*').eq('id', uid).single();
+        const meetsRes = await fetchTable('meets', supabaseClient.from('meets').select('*').eq('user_id', uid).order('date', { ascending: true }));
+
+        // Critical data check
+        if (childrenRes.error && childrenRes.error.message === 'Failed to fetch') {
+            throw new Error('Failed to fetch');
+        }
 
         // Handle profile
         if (profileRes.error && profileRes.code !== 'PGRST116') {
@@ -47,7 +60,8 @@ export async function fetchAllData() {
         }
 
         state.children = childrenRes.data || [];
-        const allMeets = meetsRes.data || [];
+        state.meets = meetsRes.data || [];
+        const allMeets = state.meets;
         state.issues = (issuesRes.data || []).map(i => {
             // Find meets for this issue from the separate table
             const issueMeets = allMeets.filter(m => m.issue_id === i.id).map(m => ({
@@ -113,9 +127,12 @@ export async function fetchAllData() {
         state.logs = logsRes.data || [];
         state.medicineMaster = masterRes.data || [];
     } catch (err) {
-        if (err.message === 'Failed to fetch') {
+        if (err.message === 'Failed to fetch' || (err.name === 'TypeError' && err.message.includes('fetch'))) {
             console.error("CRITICAL: Supabase endpoint unreachable. This usually means the project is paused or the URL is wrong.");
-            customAlert("Could not connect to the database. Please check your internet connection or ensure the Supabase project is active.", "Connection Error");
+            customAlert(
+                "Could not connect to the database. This typically happens if the Supabase project is paused due to inactivity. <br><br>Please log in to your Supabase dashboard and ensure the project is active.", 
+                "Connection Error"
+            );
         } else {
             console.error("Error fetching data:", err.message || err);
         }

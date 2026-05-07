@@ -5,6 +5,7 @@ export let state = {
     medicines: [],
     logs: [], 
     issues: [],
+    meets: [],
     medicineMaster: [],
     profile: null,
     settings: { darkMode: false, sound: false }
