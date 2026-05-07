@@ -35,13 +35,18 @@ export async function fetchAllData() {
         const meetsRes = await fetchTable('meets', supabaseClient.from('meets').select('*').eq('user_id', uid).order('date', { ascending: true }));
 
         // Critical data check
-        if (childrenRes.error && childrenRes.error.message === 'Failed to fetch') {
+        if (childrenRes.error && (childrenRes.error.message === 'Failed to fetch' || childrenRes.error.status === 0)) {
             throw new Error('Failed to fetch');
         }
 
         // Handle profile
-        if (profileRes.error && profileRes.code !== 'PGRST116') {
-            console.error("Error fetching profile:", profileRes.error);
+        if (profileRes.error) {
+            if (profileRes.error.message === 'Failed to fetch' || profileRes.error.status === 0) {
+                throw new Error('Failed to fetch');
+            }
+            if (profileRes.code !== 'PGRST116') {
+                console.error("Error fetching profile:", profileRes.error);
+            }
         }
         
         if (!profileRes.data) {
@@ -127,10 +132,21 @@ export async function fetchAllData() {
         state.logs = logsRes.data || [];
         state.medicineMaster = masterRes.data || [];
     } catch (err) {
-        if (err.message === 'Failed to fetch' || (err.name === 'TypeError' && err.message.includes('fetch'))) {
-            console.error("CRITICAL: Supabase endpoint unreachable. This usually means the project is paused or the URL is wrong.");
+        const isFetchError = err.message === 'Failed to fetch' || 
+                           (err.name === 'TypeError' && err.message.includes('fetch')) ||
+                           (err.status === 0) ||
+                           (err.message && err.message.includes('NetworkError'));
+
+        if (isFetchError) {
+            console.error("CRITICAL: Supabase endpoint unreachable. The project might be paused.");
             customAlert(
-                "Could not connect to the database. This typically happens if the Supabase project is paused due to inactivity. <br><br>Please log in to your Supabase dashboard and ensure the project is active.", 
+                "<div style='text-align:left;'>" +
+                "<b>Database connection failed.</b><br><br>" +
+                "This usually happens for one of two reasons:<br>" +
+                "1. <b>Project Paused:</b> If you haven't used the app for a week, Supabase pauses the project. Log in to <a href='https://supabase.com/dashboard' target='_blank'>Supabase Dashboard</a> to restore it.<br>" +
+                "2. <b>No Internet:</b> Check your connection.<br><br>" +
+                "Please refresh the page once the project is active." +
+                "</div>", 
                 "Connection Error"
             );
         } else {

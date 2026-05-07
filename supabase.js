@@ -149,29 +149,30 @@ export async function testConnection() {
         
         if (error) {
             console.error("Supabase connection test failed:", error.message || error.details || "Unknown error");
-            console.error("Full error object:", error);
             
-            if (status === 404) {
-                console.error("Table 'children' not found. Please ensure your database schema is set up.");
-            } else if (error.message === 'Failed to fetch' || (error.status === 0)) {
-                console.error("CRITICAL: Supabase endpoint unreachable. This usually means the project is paused, the URL is wrong, or your internet is blocking it.");
-                customAlert(
-                    "Database connection failed. Your Supabase project might be paused due to inactivity. <br><br>Please log in to the Supabase dashboard and restore it.", 
-                    "Connection Error"
-                );
+            if (error.message === 'Failed to fetch' || (error.status === 0)) {
+                console.error("CRITICAL: Supabase endpoint unreachable.");
+                if (window.customAlert) {
+                    window.customAlert(
+                        "Database connection failed. This usually means the project is paused or your internet is offline. <br><br>Please check your connection and ensure your Supabase project is active.", 
+                        "Connection Error"
+                    );
+                }
             }
             return false;
         }
         
-        console.log("Supabase connection test successful! Found children data:", data);
+        console.log("Supabase connection test successful!");
         return true;
     } catch (err) {
         if (err.message === 'Failed to fetch' || err.name === 'TypeError' || (err.message && err.message.includes('fetch'))) {
-            console.error("CRITICAL: Supabase endpoint unreachable (Exception). This usually means the project is paused or the URL is wrong.");
-            customAlert(
-                "Cannot connect to Supabase. This often happens if the project is paused or there is a network issue. <br><br>Check your internet connection and verify the project state in Supabase dashboard.", 
-                "Connection Error"
-            );
+            console.error("CRITICAL: Supabase endpoint unreachable (Exception).");
+            if (window.customAlert) {
+                window.customAlert(
+                    "Cannot reach the database server. If you haven't used the app in a while, your Supabase project might be paused. <br><br>Please log in to Supabase and restore the project.", 
+                    "Network Error"
+                );
+            }
         } else {
             console.error("Supabase connection test exception:", err);
         }

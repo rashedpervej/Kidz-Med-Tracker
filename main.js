@@ -340,6 +340,8 @@ export function changeChild(id) {
 }
 
 // --- GLOBAL EXPOSURE ---
+window.customAlert = customAlert;
+window.closeModal = closeModal;
 window.handleSignUp = handleSignUp;
 window.handleSignIn = handleSignIn;
 window.handleSignOut = handleSignOut;
