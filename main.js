@@ -1,6 +1,6 @@
 import { state, notifiedMeds, saveSettings } from './state.js';
 import { testConnection, onAuthStateChange, getUser } from './supabase.js';
-import { fetchAllData, saveProfile, saveIssue, updateProfileSelectedChild } from './api.js';
+import { fetchAllData, saveProfile, saveIssue } from './api.js';
 import { 
     showLoading, customAlert, showIssueRequiredModal, applySettings, 
     getYYYYMMDD, playBeep, playVoice, 
@@ -100,10 +100,10 @@ async function loadAppData() {
         if (!state.children || state.children.length === 0) {
             openChildModal();
         } else {
-            // Restore active child from profile if possible
-            const savedActiveId = state.profile?.last_selected_child_id;
+            // Restore active child from LocalStorage if possible
+            const savedActiveId = localStorage.getItem('babyMedTrackerActiveChild');
             if (savedActiveId && state.children.find(c => c.id.toString() === savedActiveId.toString())) {
-                state.activeChildId = savedActiveId;
+                state.activeChildId = isNaN(savedActiveId) ? savedActiveId : parseInt(savedActiveId);
             } else {
                 state.activeChildId = state.children[0].id;
             }
@@ -301,7 +301,7 @@ export function openProfileModal() {
 
 export function changeChild(id) {
     state.activeChildId = isNaN(id) ? id : parseInt(id);
-    updateProfileSelectedChild(state.activeChildId);
+    saveSettings();
     window.renderAllViews();
 }
 

@@ -14,4 +14,5 @@ export let notifiedMeds = {};
 
 export function saveSettings() {
     localStorage.setItem('babyMedTrackerSettings', JSON.stringify(state.settings));
+    localStorage.setItem('babyMedTrackerActiveChild', state.activeChildId);
 }

@@ -36,7 +36,7 @@ export async function fetchAllData() {
             console.log("Profile not found, creating one...");
             const { data: newProfile, error: createError } = await supabaseClient
                 .from('profiles')
-                .insert([{ id: uid, name: user.email.split('@')[0], last_selected_child_id: null }])
+                .insert([{ id: uid, name: user.email.split('@')[0] }])
                 .select()
                 .single();
             
@@ -160,7 +160,6 @@ export async function saveChild() {
             state.children.push(savedChild);
             if(!state.activeChildId) {
                 state.activeChildId = savedChild.id;
-                updateProfileSelectedChild(state.activeChildId);
             }
         }
         
@@ -199,7 +198,6 @@ export async function deleteChild(id) {
             
             if(state.activeChildId === id) {
                 state.activeChildId = state.children.length ? state.children[0].id : null;
-                updateProfileSelectedChild(state.activeChildId);
             }
             
             saveSettings();
@@ -793,29 +791,6 @@ export async function undoLog(logId) {
         customAlert("Failed to undo log.");
     } finally {
         showLoading(false);
-    }
-}
-
-export async function updateProfileSelectedChild(childId) {
-    const user = await getUser();
-    if (!user) return;
-    const uid = user.id;
-
-    try {
-        const { error } = await supabaseClient
-            .from('profiles')
-            .update({ last_selected_child_id: childId })
-            .eq('id', uid);
-        
-        if (error) {
-            console.warn("Could not persist last_selected_child_id:", error.message);
-        } else {
-            if (state.profile) {
-                state.profile.last_selected_child_id = childId;
-            }
-        }
-    } catch (err) {
-        console.warn("Failed to update profile selected child:", err);
     }
 }
 
