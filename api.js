@@ -131,6 +131,9 @@ export async function saveChild() {
     const id = document.getElementById('child-id').value;
     const name = document.getElementById('child-name').value.trim();
     const dob = document.getElementById('child-dob').value;
+    const gender = document.getElementById('child-gender').value;
+    const height = document.getElementById('child-height').value;
+    const weight = document.getElementById('child-weight').value;
     
     if(!name) return customAlert("Name is required");
 
@@ -613,7 +616,10 @@ export async function saveMed() {
 
     const id = document.getElementById('med-id').value;
     const name = document.getElementById('med-name').value.trim();
-    const dosage = document.getElementById('med-dosage').value.trim();
+    const dosageValue = document.getElementById('med-dosage').value.trim();
+    const dosageUnit = document.getElementById('med-dosage-unit').value;
+    const dosage = `${dosageValue} ${dosageUnit}`;
+
     const start_date = document.getElementById('med-start').value;
     const end_date = document.getElementById('med-end').value;
     const issue_id = document.getElementById('med-issue-id').value;

@@ -75,16 +75,36 @@
     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
     <header>
-        <h1>Baby Med Tracker</h1>
-        <select id="child-selector" class="child-selector" onchange="changeChild(this.value)">
-            <!-- Populated via JS -->
-        </select>
+        <div id="parent-greeting" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="parent-avatar" style="width: 45px; height: 45px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">U</div>
+                <div style="display: flex; flex-direction: column;">
+                    <span id="greeting-text" style="font-size: 14px; color: var(--text-muted);">Good Morning</span>
+                    <span id="parent-name-display" style="font-size: 18px; font-weight: 700; color: var(--text-main);">User</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <div class="header-icon-btn" onclick="window.openChildModal()" title="Switch Child">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/></svg>
+                </div>
+                <div class="header-icon-btn" style="position: relative;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <div style="position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: var(--red); border-radius: 50%; border: 2px solid var(--surface-solid);"></div>
+                </div>
+            </div>
+        </div>
+        <div id="header-child-indicator" style="display: none; align-items: center; gap: 8px; background: var(--surface-solid); padding: 5px 12px; border-radius: 20px; box-shadow: var(--shadow); cursor: pointer;" onclick="window.switchTab('home', document.querySelector('[onclick*=\'home\']'))">
+            <span id="header-child-name" style="font-size: 13px; font-weight: 600; color: var(--primary);">👶 Baby</span>
+        </div>
     </header>
 
     <!-- VIEWS -->
     
     <!-- Home (Dashboard) -->
     <main id="view-home" class="view active">
+        <div id="child-profile-card-container">
+            <!-- Populated via JS -->
+        </div>
         <div class="summary-cards" id="home-summary">
             <!-- Populated via JS -->
         </div>
@@ -94,11 +114,11 @@
         </div>
     </main>
 
-    <!-- Medicines -->
     <main id="view-meds" class="view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <h2 style="font-size: 18px;">Medicines List</h2>
+        <div class="compact-child-header" id="meds-child-header"></div>
+        <div class="view-header-title-bar">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h2 style="font-size: 20px; font-weight: 700;">Medicines</h2>
                 <button class="btn btn-primary btn-small" onclick="openMedModal()">+ Add</button>
             </div>
             <select id="med-filter-issue" class="btn-small" style="padding: 5px 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: var(--surface-solid); color: var(--text-main);" onchange="renderMeds()">
@@ -109,15 +129,14 @@
         <div id="meds-list-container"></div>
     </main>
 
-    <!-- History -->
     <main id="view-history" class="view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="font-size: 18px;">History & Stats</h2>
-        </div>
-        
-        <div class="tabs-sub" style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="btn btn-small btn-primary" id="tab-history-logs" onclick="switchHistoryTab('logs')">History</button>
-            <button class="btn btn-small btn-outline" id="tab-history-stats" onclick="switchHistoryTab('stats')">Stats</button>
+        <div class="compact-child-header" id="history-child-header"></div>
+        <div class="view-header-title-bar">
+            <h2 style="font-size: 20px; font-weight: 700;">History</h2>
+            <div class="tabs-sub" style="display: flex; gap: 10px;">
+                <button class="btn btn-small btn-primary" id="tab-history-logs" onclick="switchHistoryTab('logs')">History</button>
+                <button class="btn btn-small btn-outline" id="tab-history-stats" onclick="switchHistoryTab('stats')">Stats</button>
+            </div>
         </div>
 
         <!-- History Logs Section -->
@@ -143,16 +162,17 @@
         </div>
     </main>
 
-    <!-- Issues -->
     <main id="view-issues" class="view">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="font-size: 18px;">Issues</h2>
-            <button class="btn btn-primary btn-small" onclick="openIssueModal()">+ New Issue</button>
-        </div>
-        
-        <div class="tabs-sub" style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="btn btn-small btn-primary" id="tab-issues-active" onclick="switchIssueTab('active')">Active</button>
-            <button class="btn btn-small btn-outline" id="tab-issues-resolved" onclick="switchIssueTab('resolved')">Resolved</button>
+        <div class="compact-child-header" id="issues-child-header"></div>
+        <div class="view-header-title-bar">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h2 style="font-size: 20px; font-weight: 700;">Issues</h2>
+                <button class="btn btn-primary btn-small" onclick="openIssueModal()">+ New Issue</button>
+            </div>
+            <div class="tabs-sub" style="display: flex; gap: 10px;">
+                <button class="btn btn-small btn-primary" id="tab-issues-active" onclick="switchIssueTab('active')">Active</button>
+                <button class="btn btn-small btn-outline" id="tab-issues-resolved" onclick="switchIssueTab('resolved')">Resolved</button>
+            </div>
         </div>
 
         <div id="issues-list-container"></div>
@@ -306,11 +326,31 @@
         <input type="hidden" id="child-id">
         <div class="form-group">
             <label>Child Name</label>
-            <input type="text" id="child-name" placeholder="E.g., John">
+            <input type="text" id="child-name" placeholder="E.g., Sofia">
         </div>
-        <div class="form-group">
-            <label>Date of Birth</label>
-            <input type="date" id="child-dob">
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Date of Birth</label>
+                <input type="date" id="child-dob">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Gender</label>
+                <select id="child-gender">
+                    <option value="Girl">Girl</option>
+                    <option value="Boy">Boy</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Height/Length (cm)</label>
+                <input type="number" id="child-height" placeholder="E.g., 65" step="0.1">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Weight (kg)</label>
+                <input type="number" id="child-weight" placeholder="E.g., 4.5" step="0.01">
+            </div>
         </div>
         <div class="actions">
             <button class="btn btn-outline" onclick="closeModal('modal-child')">Cancel</button>
@@ -339,7 +379,18 @@
         </div>
         <div class="form-group">
             <label>Dosage</label>
-            <input type="text" id="med-dosage" placeholder="E.g., 2.5 ml">
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="med-dosage" placeholder="E.g., 2.5" step="0.1" style="flex: 2;">
+                <select id="med-dosage-unit" style="flex: 1;">
+                    <option value="ml">ml</option>
+                    <option value="mg">mg</option>
+                    <option value="drops">drops</option>
+                    <option value="pills">pills</option>
+                    <option value="tsp">tsp</option>
+                    <option value="tbsp">tbsp</option>
+                    <option value="unit">unit</option>
+                </select>
+            </div>
         </div>
         <div style="display:flex; gap:10px;">
             <div class="form-group" style="flex:1">

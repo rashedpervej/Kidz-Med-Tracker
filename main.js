@@ -14,6 +14,15 @@ import {
 import { renderHeader, renderAllViews, renderHome, renderProfile } from './render.js';
 
 // --- INITIALIZATION ---
+window.addEventListener('scroll', () => {
+    const mainHeader = document.querySelector('header');
+    const childHeaders = document.querySelectorAll('.compact-child-header');
+    const isScrolled = window.scrollY > 10;
+    
+    if (mainHeader) mainHeader.classList.toggle('header-scrolled', isScrolled);
+    childHeaders.forEach(ch => ch.classList.toggle('header-scrolled', isScrolled));
+});
+
 async function init() {
     showLoading(true);
     try {
@@ -237,7 +246,22 @@ export async function openMedModal(editId = null, preSelectedIssueId = null, pre
 
         document.getElementById('med-id').value = m.id;
         document.getElementById('med-name').value = m.name;
-        document.getElementById('med-dosage').value = m.dosage;
+        
+        // Split dosage into value and unit
+        if (m.dosage) {
+            const parts = m.dosage.split(' ');
+            if (parts.length >= 2) {
+                document.getElementById('med-dosage').value = parts[0];
+                document.getElementById('med-dosage-unit').value = parts[1];
+            } else {
+                document.getElementById('med-dosage').value = m.dosage;
+                document.getElementById('med-dosage-unit').value = 'ml'; // default
+            }
+        } else {
+            document.getElementById('med-dosage').value = '';
+            document.getElementById('med-dosage-unit').value = 'ml';
+        }
+
         document.getElementById('med-start').value = m.start_date;
         document.getElementById('med-end').value = m.end_date;
         issueSelect.value = m.issue_id || (activeIssues.length > 0 ? activeIssues[0].id : "");
@@ -250,6 +274,7 @@ export async function openMedModal(editId = null, preSelectedIssueId = null, pre
         document.getElementById('med-id').value = '';
         document.getElementById('med-name').value = '';
         document.getElementById('med-dosage').value = '';
+        document.getElementById('med-dosage-unit').value = 'ml';
         const today = getYYYYMMDD(new Date());
         document.getElementById('med-start').value = today;
         const nextWeek = new Date();
@@ -272,6 +297,9 @@ export function openChildModal(editId = null) {
     const idField = document.getElementById('child-id');
     const nameField = document.getElementById('child-name');
     const dobField = document.getElementById('child-dob');
+    const genderField = document.getElementById('child-gender');
+    const heightField = document.getElementById('child-height');
+    const weightField = document.getElementById('child-weight');
     const titleField = document.getElementById('child-modal-title');
 
     if (editId) {
@@ -280,11 +308,17 @@ export function openChildModal(editId = null) {
         idField.value = c.id;
         nameField.value = c.name;
         dobField.value = c.dob || "";
+        genderField.value = c.gender || "Girl";
+        heightField.value = c.height || "";
+        weightField.value = c.weight || "";
         titleField.innerText = "Edit Child Profile";
     } else {
         idField.value = '';
         nameField.value = '';
         dobField.value = '';
+        genderField.value = 'Girl';
+        heightField.value = '';
+        weightField.value = '';
         titleField.innerText = "Add Child Profile";
     }
     

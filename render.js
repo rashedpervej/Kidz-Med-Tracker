@@ -2,10 +2,11 @@ import { state } from './state.js';
 import { getYYYYMMDD, formatTimeFriendly, openModal, renderIssues, formatDateDisplay, calculateAge } from './ui.js';
 
 export function renderAllViews() {
+    renderHeader();
     renderHome();
     renderMeds();
     renderHistory();
-    renderIssues();
+    renderIssuesPage();
     renderProfile();
     
     if (document.getElementById('view-history').classList.contains('active')) {
@@ -40,15 +41,118 @@ export function renderProfile() {
     `;
 }
 
+export function getDetailedAge(dobString) {
+    const dob = new Date(dobString);
+    const now = new Date();
+    
+    let years = now.getFullYear() - dob.getFullYear();
+    let months = now.getMonth() - dob.getMonth();
+    let days = now.getDate() - dob.getDate();
+
+    if (days < 0) {
+        months--;
+        const lastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        days += lastMonth.getDate();
+    }
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    if (years > 0) {
+        return { 
+            main: years, 
+            unit: years === 1 ? 'Year' : 'Years', 
+            sub: months > 0 ? `${months} Month${months > 1 ? 's' : ''}` : '' 
+        };
+    }
+    if (months > 0) {
+        return { 
+            main: months, 
+            unit: months === 1 ? 'Month' : 'Months', 
+            sub: days > 0 ? `${days} Day${days > 1 ? 's' : ''}` : '' 
+        };
+    }
+    return { 
+        main: days, 
+        unit: days === 1 ? 'Day' : 'Days', 
+        sub: '' 
+    };
+}
+
 export function renderHome() {
+    const profileContainer = document.getElementById('child-profile-card-container');
     const container = document.getElementById('timeline-container');
     const summary = document.getElementById('home-summary');
+    
+    if (profileContainer) profileContainer.innerHTML = '';
     container.innerHTML = '';
     summary.innerHTML = '';
 
     if (!state.activeChildId) {
+        if (profileContainer) profileContainer.innerHTML = '<div class="card" style="text-align:center; color:var(--text-muted)">Please add a child profile.</div>';
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted)">Please add a child profile.</p>';
         return;
+    }
+
+    const activeChild = state.children.find(c => c.id.toString() === state.activeChildId.toString());
+    if (activeChild && profileContainer) {
+        const initials = activeChild.name ? activeChild.name[0].toUpperCase() : '?';
+        const ageObj = activeChild.dob ? getDetailedAge(activeChild.dob) : { main: 'N/A', unit: '', sub: '' };
+        
+        profileContainer.innerHTML = `
+            <div class="child-profile-card">
+                <div class="card-header-row">
+                    <div class="child-identity">
+                        <div class="child-avatar-large">${initials}</div>
+                        <div class="child-name-meta">
+                            <h2 class="child-name">${activeChild.name}</h2>
+                            <span class="child-meta">Baby ${activeChild.gender || 'Girl'}</span>
+                        </div>
+                    </div>
+                    <div class="switch-child-btn-square" onclick="window.openChildModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </div>
+                </div>
+
+                <div class="child-profile-stats">
+                    <div class="age-display">
+                        <div class="age-main-box">
+                            <span class="age-val">${ageObj.main}</span>
+                        </div>
+                        <div class="age-text-group">
+                            <span class="age-unit-label">${ageObj.unit}</span>
+                            <span class="age-sub-label">${ageObj.sub}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="v-stats-group">
+                        <div class="stat-row">
+                            <div class="stat-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M7 2h10M7 22h10"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label-text">Length:</span>
+                                <span class="stat-value-text">${activeChild.height ? activeChild.height + 'cm' : '--'}</span>
+                            </div>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-icon-box">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15c0 3.31 2.69 6 6 6s6-2.69 6-6M12 2v2M8 2h8M12 4v10M9 6h6"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label-text">Weight:</span>
+                                <span class="stat-value-text">${activeChild.weight ? activeChild.weight + ' kg' : '--'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="child-birth-date">
+                    Birth: ${activeChild.dob ? formatDateDisplay(activeChild.dob) : 'N/A'}
+                </div>
+            </div>
+        `;
     }
 
     const today = getYYYYMMDD(new Date());
@@ -154,6 +258,10 @@ export function renderHome() {
 export function renderMeds() {
     const container = document.getElementById('meds-list-container');
     const filterSelect = document.getElementById('med-filter-issue');
+    const childHeader = document.getElementById('meds-child-header');
+    
+    if (childHeader) renderCompactChildHeader(childHeader);
+
     const selectedIssue = filterSelect.value;
     
     // Populate filter dropdown with active issues
@@ -228,6 +336,10 @@ export function renderMeds() {
 export function renderHistory() {
     const container = document.getElementById('history-list-container');
     const filterInput = document.getElementById('history-date-filter');
+    const childHeader = document.getElementById('history-child-header');
+    
+    if (childHeader) renderCompactChildHeader(childHeader);
+
     let filterDate = filterInput.value;
 
     if(!filterDate) {
@@ -349,39 +461,94 @@ export function renderManageChildren() {
     state.children.forEach(c => {
         const ageStr = c.dob ? calculateAge(c.dob) : (c.age || 'N/A');
         const div = document.createElement('div');
+        div.className = 'child-list-item';
         div.style.display = 'flex'; 
         div.style.justifyContent = 'space-between'; 
         div.style.alignItems = 'center';
-        div.style.padding = '10px 0';
-        div.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+        div.style.padding = '12px';
+        div.style.borderRadius = '12px';
+        div.style.marginBottom = '8px';
+        div.style.cursor = 'pointer';
+        div.style.background = c.id.toString() === state.activeChildId?.toString() ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent';
+        div.style.border = c.id.toString() === state.activeChildId?.toString() ? '1px solid var(--primary)' : '1px solid rgba(0,0,0,0.05)';
+        
         div.innerHTML = `
-            <div style="flex: 1;">
-                <div style="font-weight: 600;">${c.name}</div>
-                <div style="font-size: 12px; color: var(--text-muted);">${ageStr} ${c.dob ? `(${formatDateDisplay(c.dob)})` : ''}</div>
+            <div style="flex: 1;" onclick="window.changeChild('${c.id}'); window.closeModal('modal-child')">
+                <div style="font-weight: 600; color: ${c.id.toString() === state.activeChildId?.toString() ? 'var(--primary)' : 'inherit'}">${c.name} ${c.id.toString() === state.activeChildId?.toString() ? '✓' : ''}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">${ageStr} ${c.dob ? `(${formatDateDisplay(c.dob)})` : ''}</div>
             </div>
             <div style="display: flex; gap: 5px;">
-                <button class="btn btn-outline btn-small" onclick="window.openChildModal('${c.id}')">✎</button>
-                <button class="btn btn-red btn-small" onclick="window.deleteChild('${c.id}')">🗑</button>
+                <button class="btn btn-outline btn-small" onclick="event.stopPropagation(); window.openChildModal('${c.id}')">✎</button>
+                <button class="btn btn-red btn-small" onclick="event.stopPropagation(); window.deleteChild('${c.id}')">🗑</button>
             </div>
         `;
         container.appendChild(div);
     });
 }
 
-export function renderHeader() {
-    const select = document.getElementById('child-selector');
-    select.innerHTML = '';
-    if(state.children.length === 0) {
-        select.innerHTML = '<option>No Child</option>';
+export function renderIssuesPage() {
+    const childHeader = document.getElementById('issues-child-header');
+    if (childHeader) renderCompactChildHeader(childHeader);
+    renderIssues(); // Call the one from ui.js
+}
+
+export function renderCompactChildHeader(container) {
+    if (!state.activeChildId) {
+        container.style.display = 'none';
         return;
     }
-    state.children.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.name;
-        if(c.id === state.activeChildId) opt.selected = true;
-        select.appendChild(opt);
-    });
+    
+    const activeChild = state.children.find(c => c.id.toString() === state.activeChildId.toString());
+    if (!activeChild) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    const initials = activeChild.name ? activeChild.name[0].toUpperCase() : '?';
+    
+    container.innerHTML = `
+        <div class="compact-child-info">
+            <div class="child-avatar-small" style="background: var(--primary); color: white;">${initials}</div>
+            <span class="compact-child-name">${activeChild.name}</span>
+        </div>
+        <div class="compact-child-switch" onclick="window.openChildModal()">Switch</div>
+    `;
+}
+
+export function renderHeader() {
+    const parentGreeting = document.getElementById('parent-greeting');
+    const greetingText = document.getElementById('greeting-text');
+    const profileName = document.getElementById('parent-name-display');
+    const parentAvatar = document.getElementById('parent-avatar');
+    const headerChildIndicator = document.getElementById('header-child-indicator');
+    const headerChildName = document.getElementById('header-child-name');
+
+    if (state.profile) {
+        if (profileName) profileName.textContent = state.profile.name || 'User';
+        if (parentAvatar) parentAvatar.textContent = (state.profile.name || 'U')[0].toUpperCase();
+    }
+
+    const isHome = document.getElementById('view-home').classList.contains('active');
+    
+    const header = document.querySelector('header');
+    if (isHome) {
+        if (header) header.style.display = 'flex';
+        if (parentGreeting) parentGreeting.style.display = 'flex';
+        if (headerChildIndicator) headerChildIndicator.style.display = 'none';
+        
+        // Update greeting based on time
+        if (greetingText) {
+            const hour = new Date().getHours();
+            if (hour < 12) greetingText.innerText = "Good Morning";
+            else if (hour < 17) greetingText.innerText = "Good Afternoon";
+            else greetingText.innerText = "Good Evening";
+        }
+    } else {
+        if (header) header.style.display = 'none';
+        if (parentGreeting) parentGreeting.style.display = 'none';
+        if (headerChildIndicator) headerChildIndicator.style.display = 'none'; // Always hide header child name
+    }
 }
 
 // --- GLOBAL EXPOSURE ---
@@ -392,3 +559,4 @@ window.renderHistory = renderHistory;
 window.renderAnalytics = renderAnalytics;
 window.renderManageChildren = renderManageChildren;
 window.renderHeader = renderHeader;
+window.renderCompactChildHeader = renderCompactChildHeader;

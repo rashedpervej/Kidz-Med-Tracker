@@ -389,6 +389,8 @@ export function switchTab(tabId, el) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if(el) el.classList.add('active');
 
+    window.renderHeader();
+
     // Context-aware FAB visibility
     const fab = document.getElementById('fab');
     if (tabId === 'home' || tabId === 'meds') {
@@ -1083,6 +1085,10 @@ export function renderIssues() {
     const container = document.getElementById('issues-list-container');
     if (!container) return;
     
+    // Refresh compact header if it exists
+    const childHeader = document.getElementById('issues-child-header');
+    if (childHeader && window.renderCompactChildHeader) window.renderCompactChildHeader(childHeader);
+
     const filtered = state.issues.filter(i => 
         i.child_id.toString() === state.activeChildId?.toString() && 
         i.status === currentIssueTab &&
@@ -1144,6 +1150,8 @@ export function showIssueDetails(issueId) {
 
     const isNearFollowUp = issue.follow_up_date && (new Date(issue.follow_up_date) - new Date()) < (3 * 24 * 60 * 60 * 1000) && (new Date(issue.follow_up_date) - new Date()) > - (24 * 60 * 60 * 1000);
 
+    const latestMeet = issue.meets.length > 0 ? issue.meets[issue.meets.length - 1] : null;
+
     let content = `
         <div style="text-align: left;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
@@ -1151,6 +1159,25 @@ export function showIssueDetails(issueId) {
                 <div class="badge ${issue.status === 'active' ? 'badge-green' : 'badge-yellow'}">${issue.status.toUpperCase()}</div>
             </div>
             
+            <div style="background: rgba(var(--primary-rgb), 0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(var(--primary-rgb), 0.1);">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: ${latestMeet && latestMeet.notes ? '12px' : '0'};">
+                    <div style="text-align: center; border-right: 1px solid rgba(var(--primary-rgb), 0.1);">
+                        <div style="font-size: 18px; font-weight: bold; color: var(--primary);">${meds.length}</div>
+                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Total Meds</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold; color: var(--primary);">${issue.meets.length}</div>
+                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Doctor Meets</div>
+                    </div>
+                </div>
+                ${latestMeet && latestMeet.notes ? `
+                    <div style="padding-top: 12px; border-top: 1px solid rgba(var(--primary-rgb), 0.1);">
+                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Latest Doctor Instructions</div>
+                        <p style="margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-dark);">${latestMeet.notes}</p>
+                    </div>
+                ` : ''}
+            </div>
+
             <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
                 <div><strong>Created:</strong> ${formatDateDisplay(issue.created_at)}</div>
                 ${issue.resolved_at ? `<div><strong>Resolved:</strong> ${formatDateDisplay(issue.resolved_at)}</div>` : ''}
