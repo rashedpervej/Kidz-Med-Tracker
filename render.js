@@ -110,9 +110,6 @@ export function renderHome() {
                             <span class="child-meta">Baby ${activeChild.gender || 'Girl'}</span>
                         </div>
                     </div>
-                    <div class="switch-child-btn-square" onclick="window.openChildModal()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    </div>
                 </div>
 
                 <div class="child-profile-stats">
@@ -133,7 +130,7 @@ export function renderHome() {
                             </div>
                             <div class="stat-info">
                                 <span class="stat-label-text">Length:</span>
-                                <span class="stat-value-text">${activeChild.height ? activeChild.height + 'cm' : '--'}</span>
+                                <span class="stat-value-text">${activeChild.height ? activeChild.height + ' cm' : '--'}</span>
                             </div>
                         </div>
                         <div class="stat-row">

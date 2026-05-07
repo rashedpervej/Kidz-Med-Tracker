@@ -145,11 +145,35 @@ export async function saveChild() {
             user_id: uid 
         };
 
+        // These are new columns that might not exist in the user's Supabase schema yet
+        const optionalFields = {
+            gender: gender || null,
+            height: height ? parseFloat(height) : null,
+            weight: weight ? parseFloat(weight) : null
+        };
+
         let result;
+        const fullObj = { ...childObj, ...optionalFields };
+
         if (id) {
-            result = await supabaseClient.from('children').update(childObj).eq('id', id).eq('user_id', uid).select();
+            result = await supabaseClient.from('children').update(fullObj).eq('id', id).eq('user_id', uid).select();
         } else {
-            result = await supabaseClient.from('children').insert([childObj]).select();
+            result = await supabaseClient.from('children').insert([fullObj]).select();
+        }
+
+        // Handle missing columns error gracefully
+        if (result.error && (result.error.message.includes('column') || result.error.code === '42703' || result.error.message.includes('schema cache'))) {
+            console.warn("Missing optional columns in 'children' table. Retrying with basic fields...", result.error.message);
+            
+            if (id) {
+                result = await supabaseClient.from('children').update(childObj).eq('id', id).eq('user_id', uid).select();
+            } else {
+                result = await supabaseClient.from('children').insert([childObj]).select();
+            }
+            
+            if (!result.error) {
+                customAlert("Profile saved, but some data (gender, height, weight) couldn't be stored. Please update your database schema in Supabase.", "Schema Notice");
+            }
         }
 
         if (result.error) throw result.error;
