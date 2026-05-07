@@ -1,3 +1,5 @@
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { state, saveSettings } from './state.js';
 import { signUp, signIn, signOut, resetPassword, updatePassword, reauthenticate, supabaseClient } from './supabase.js';
 
@@ -451,14 +453,130 @@ export function toggleSound(isSound) {
     if (banner) banner.style.display = showBanner ? 'block' : 'none';
 }
 
-export function exportData() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
-    const anchor = document.createElement('a');
-    anchor.href = dataStr;
-    anchor.download = "BabyMedTracker_Backup.json";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
+export function exportToPDF() {
+    if (!state.activeChildId) return customAlert("No child selected to export data.");
+    
+    const child = state.children.find(c => c.id.toString() === state.activeChildId.toString());
+    if (!child) return customAlert("Child data not found.");
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Medical Summary Report", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    const exportDate = new Date().toLocaleString();
+    doc.text(`Exported on: ${exportDate}`, 14, 30);
+    
+    // Child Info
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Patient Information", 14, 45);
+    
+    doc.setFontSize(11);
+    doc.text(`Name: ${child.name}`, 14, 52);
+    const age = calculateAge(child.dob);
+    doc.text(`Age: ${age}`, 14, 58);
+    if (child.dob) doc.text(`DOB: ${formatDateDisplay(child.dob)}`, 14, 64);
+    
+    let currentY = 75;
+
+    // Filter active issues
+    const activeIssues = state.issues.filter(i => 
+        i.child_id.toString() === state.activeChildId.toString() && 
+        !i.is_deleted && 
+        i.status === 'active'
+    );
+
+    if (activeIssues.length === 0) {
+        doc.setFontSize(11);
+        doc.text("No active medical issues currently recorded.", 14, currentY);
+    } else {
+        activeIssues.forEach((issue, index) => {
+            // Check for page overflow
+            if (currentY > 250) {
+                doc.addPage();
+                currentY = 20;
+            }
+            
+            doc.setFontSize(14);
+            doc.setTextColor(19, 99, 223); // Professional blue
+            doc.text(`${index + 1}. Issue: ${issue.title}`, 14, currentY);
+            currentY += 7;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            if (issue.description) {
+                const descLines = doc.splitTextToSize(`Description: ${issue.description}`, pageWidth - 28);
+                doc.text(descLines, 14, currentY);
+                currentY += (descLines.length * 5) + 2;
+            }
+
+            // Medicines (Just names)
+            const issueMeds = state.medicines.filter(m => m.issue_id && m.issue_id.toString() === issue.id.toString());
+            if (issueMeds.length > 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Medicines Prescribed:", 14, currentY);
+                currentY += 6;
+                
+                doc.setFontSize(10);
+                doc.setTextColor(40, 40, 40);
+                issueMeds.forEach(m => {
+                    doc.text(`• ${m.name}`, 18, currentY);
+                    currentY += 5;
+                });
+                currentY += 4;
+            }
+
+            // Meet History
+            if (issue.meets && issue.meets.length > 0) {
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Appointment History:", 14, currentY);
+                currentY += 5;
+
+                const tableData = issue.meets.map(meet => {
+                    let instructions = "";
+                    if (meet.notes && meet.notes.trim()) {
+                        instructions = meet.notes.split('\n').filter(l => l.trim()).map(l => `• ${l.trim()}`).join('\n');
+                    }
+                    return [
+                        formatDateDisplay(meet.date),
+                        meet.doctor_name || "-",
+                        meet.medical_center || "-",
+                        instructions
+                    ];
+                });
+
+                autoTable(doc, {
+                    startY: currentY,
+                    head: [['Date', 'Doctor', 'Center', 'Instructions']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [19, 99, 223] },
+                    styles: { fontSize: 9, cellPadding: 3 },
+                    columnStyles: {
+                        3: { cellWidth: 80 }
+                    },
+                    margin: { left: 14, right: 14 },
+                    didDrawPage: (data) => {
+                        // Update currentY after table is drawn
+                        currentY = data.cursor.y + 15;
+                    }
+                });
+                currentY = (doc).lastAutoTable.finalY + 15;
+            } else {
+                currentY += 5;
+            }
+        });
+    }
+
+    doc.save(`${child.name.replace(/\s+/g, '_')}_Medical_Report.pdf`);
 }
 
 export function enablePermissions() {
@@ -1156,7 +1274,7 @@ window.closeModal = closeModal;
 window.switchTab = switchTab;
 window.toggleDarkMode = toggleDarkMode;
 window.toggleSound = toggleSound;
-window.exportData = exportData;
+window.exportToPDF = exportToPDF;
 window.enablePermissions = enablePermissions;
 window.addTimeRow = addTimeRow;
 window.handleSignUp = handleSignUp;
