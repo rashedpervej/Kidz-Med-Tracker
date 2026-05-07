@@ -116,15 +116,17 @@
 
     <main id="view-meds" class="view">
         <div class="compact-child-header" id="meds-child-header"></div>
-        <div class="view-header-title-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <h2 style="font-size: 20px; font-weight: 700;">Medicines</h2>
+        <div class="view-header-title-bar" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h2 style="font-size: 20px; font-weight: 700; margin: 0;">Medicines</h2>
                 <button class="btn btn-primary btn-small" onclick="openMedModal()">+ Add</button>
             </div>
-            <select id="med-filter-issue" class="btn-small" style="padding: 5px 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: var(--surface-solid); color: var(--text-main);" onchange="renderMeds()">
-                <option value="all">All Issues</option>
-                <option value="none">No Issue</option>
-            </select>
+            <div style="display: flex; justify-content: flex-start; width: 100%;">
+                <select id="med-filter-issue" class="btn-small" style="padding: 5px 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: var(--surface-solid); color: var(--text-main);" onchange="renderMeds()">
+                    <option value="all">All Issues</option>
+                    <option value="none">No Issue</option>
+                </select>
+            </div>
         </div>
         <div id="meds-list-container"></div>
     </main>
@@ -164,12 +166,12 @@
 
     <main id="view-issues" class="view">
         <div class="compact-child-header" id="issues-child-header"></div>
-        <div class="view-header-title-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <h2 style="font-size: 20px; font-weight: 700;">Issues</h2>
+        <div class="view-header-title-bar" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h2 style="font-size: 20px; font-weight: 700; margin: 0;">Issues</h2>
                 <button class="btn btn-primary btn-small" onclick="openIssueModal()">+ New Issue</button>
             </div>
-            <div class="tabs-sub" style="display: flex; gap: 10px;">
+            <div class="tabs-sub" style="display: flex; gap: 10px; justify-content: flex-start; width: 100%;">
                 <button class="btn btn-small btn-primary" id="tab-issues-active" onclick="switchIssueTab('active')">Active</button>
                 <button class="btn btn-small btn-outline" id="tab-issues-resolved" onclick="switchIssueTab('resolved')">Resolved</button>
             </div>

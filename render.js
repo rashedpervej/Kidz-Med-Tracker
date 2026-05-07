@@ -502,14 +502,14 @@ export function renderCompactChildHeader(container) {
     }
     
     container.style.display = 'flex';
-    const initials = activeChild.name ? activeChild.name[0].toUpperCase() : '?';
     
     container.innerHTML = `
         <div class="compact-child-info">
-            <div class="child-avatar-small" style="background: var(--primary); color: white;">${initials}</div>
-            <span class="compact-child-name">${activeChild.name}</span>
+            <span class="compact-app-title">Medz Diary</span>
         </div>
-        <div class="compact-child-switch" onclick="window.openChildModal()">Switch</div>
+        <div class="compact-child-name-right" onclick="window.openChildModal()">
+            ${activeChild.name}
+        </div>
     `;
 }
 
