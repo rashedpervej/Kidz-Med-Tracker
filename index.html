@@ -85,7 +85,27 @@
             </div>
             <div style="display: flex; gap: 8px;">
                 <div class="header-icon-btn" onclick="window.openChildModal()" title="Switch Child">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/></svg>
+                    <svg version="1.0" viewBox="0 0 237.83 237.83" width="22" height="22" fill="currentColor">
+                        <g>
+                            <path d="M117.88,0.22c0.94,0.67,1.82,0.84,2.8,1.61c3.89,3.04,17.33,16.34,20.17,20.17c2.43,3.29,2.18,6.77-0.26,9.97
+                                c-3.15,4.13-15.08,15.99-19.22,19.26c-7.19,5.69-15.82-0.91-12.86-8.69c1.18-3.1,4.23-4.96,6.13-7.54
+                                C92.79,35.98,71.1,46.17,56.44,62.34c-4.5,4.97-8.24,14.14-16.31,10.76c-5.06-2.12-5.63-7.66-3.03-12.02
+                                c9.69-16.2,32.99-31.69,50.74-37.35c8.84-2.82,18.03-4.18,27.25-4.97c-6.67-5.61-11.7-13.96-0.93-18.54H117.88z"/>
+                            <path d="M64.1,147.18c17.49,2.61,31.31,15.68,35.01,32.92c1.3,6.04,3.56,18.1-3.81,20.77c-27.18,1.31-54.68,0.17-81.98,0.58
+                                c-3.22-0.24-6.3-1.99-7.4-5.12c-0.96-2.74-0.5-8.68-0.11-11.69c2.54-19.27,16.68-34.6,36.03-37.45l-8.49-4.72
+                                C3.26,121.18,23.03,73.68,59.57,80.55c29.48,5.54,37.44,44.43,13.31,61.73L64.1,147.18z M49.14,96.3
+                                c-18.42,2.86-19.77,32.14,0.02,35.92C77.37,137.62,78.86,91.68,49.14,96.3z M84.03,185.2c-5.08-31.26-57.21-31.3-62.12,0H84.03z"/>
+                            <path d="M196.23,98.51c0.07,0.69,0.68,0.72,1.18,0.9c5.82,2.12,9.96,2.71,15.47,6.32c12.29,8.04,20.84,24.98,19.46,39.78
+                                c-0.49,5.31-4.35,7.97-9.44,8.19c-24.86-1.32-51.42,1.69-76.07,0c-9.77-0.67-10.07-6.2-9.5-14.64
+                                c1.38-20.42,16.26-36.4,36.18-40.09l-4.65-2.06c-29.93-15.57-21.03-61.74,11.85-64.69C221.63,28.55,233.95,84.48,196.23,98.51z
+                                 M183.15,48.11c-24.14,1.96-21.14,39.67,4.46,36.45C209.66,81.78,207.13,46.16,183.15,48.11z M215.7,137.45
+                                c-4.78-31.57-57.11-31.55-62.12,0H215.7z"/>
+                            <path d="M125.76,219.05c1.48,2.42,4.8,4.18,6.12,6.62c4.05,7.49-4.74,15.45-11.7,10.31c-3.4-2.51-17.65-16.77-20.17-20.17
+                                c-2.12-2.87-2.28-6.58-0.22-9.52c1.83-2.61,17.84-18.59,20.43-20.37c6.27-4.3,13.37,0.57,12.5,7.86c-0.46,3.83-4.98,6.02-6.96,9.02
+                                c20.33-1.07,40.92-11.34,54.72-26.18c4.88-5.25,10.43-17.47,18.97-11.11c6.49,4.84,1.32,11.65-2.3,16.18
+                                C179.91,203.29,153.46,217.26,125.76,219.05z"/>
+                        </g>
+                    </svg>
                 </div>
                 <div class="header-icon-btn" style="position: relative;">
                     <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
@@ -337,22 +357,31 @@
             </div>
             <div class="form-group" style="flex: 1;">
                 <label>Gender</label>
-                <select id="child-gender">
-                    <option value="Girl">Girl</option>
+                <select id="child-gender" onchange="updateDefaultAvatar(this.value)">
                     <option value="Boy">Boy</option>
+                    <option value="Girl">Girl</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
         </div>
-        <div style="display: flex; gap: 10px;">
-            <div class="form-group" style="flex: 1;">
-                <label>Height/Length (cm)</label>
-                <input type="number" id="child-height" placeholder="E.g., 65" step="0.1">
+        <div class="form-group">
+            <label>Avatar / Profile Photo</label>
+            <div class="avatar-selector-grid">
+                <div class="avatar-preview-box" id="child-avatar-preview">👦</div>
+                <div class="avatar-upload-actions">
+                    <button type="button" class="btn btn-small btn-outline" onclick="document.getElementById('avatar-upload').click()">Upload Photo</button>
+                    <input type="file" id="avatar-upload" hidden accept="image/*" onchange="window.handleAvatarUpload(event)">
+                </div>
+                <div class="preset-emojis-row">
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('👦')">👦</span>
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('👧')">👧</span>
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('👶')">👶</span>
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('🦁')">🦁</span>
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('🐧')">🐧</span>
+                    <span class="preset-emoji" onclick="window.selectPresetAvatar('🐱')">🐱</span>
+                </div>
             </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Weight (kg)</label>
-                <input type="number" id="child-weight" placeholder="E.g., 4.5" step="0.01">
-            </div>
+            <input type="hidden" id="child-avatar-url">
         </div>
         <div class="actions">
             <button class="btn btn-outline" onclick="closeModal('modal-child')">Cancel</button>
@@ -504,6 +533,26 @@
     <div style="max-width: 90%; max-height: 90%; position: relative;" onclick="event.stopPropagation()">
         <img id="zoom-img" style="max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
         <button class="btn btn-red btn-small" style="position: absolute; top: -40px; right: 0;" onclick="window.closeModal('modal-zoom')">Close</button>
+    </div>
+</div>
+
+<!-- Modal: AI Prescription Preview -->
+<div id="modal-ai-preview" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+        <h2 style="margin-bottom: 10px;">Prescription Analysis</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            AI suggestions may be inaccurate. Please verify before saving.
+        </p>
+        
+        <div id="ai-results-container" style="max-height: 50vh; overflow-y: auto; margin-bottom: 20px;">
+            <!-- AI detected medicines will be rendered here -->
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-ai-preview')">Cancel</button>
+            <button class="btn btn-primary" onclick="window.confirmAIResults()">Add Selected to Tracker</button>
+        </div>
     </div>
 </div>
 

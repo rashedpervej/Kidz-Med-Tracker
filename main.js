@@ -1,6 +1,6 @@
 import { state, notifiedMeds, saveSettings } from './state.js';
 import { testConnection, onAuthStateChange, getUser } from './supabase.js';
-import { fetchAllData, saveProfile, saveIssue, updateProfileSelectedChild } from './api.js';
+import { fetchAllData, saveProfile, saveIssue, updateProfileSelectedChild, uploadAvatar } from './api.js';
 import { 
     showLoading, customAlert, showIssueRequiredModal, applySettings, 
     getYYYYMMDD, playBeep, playVoice, 
@@ -298,8 +298,8 @@ export function openChildModal(editId = null) {
     const nameField = document.getElementById('child-name');
     const dobField = document.getElementById('child-dob');
     const genderField = document.getElementById('child-gender');
-    const heightField = document.getElementById('child-height');
-    const weightField = document.getElementById('child-weight');
+    const avatarUrlField = document.getElementById('child-avatar-url');
+    const avatarPreview = document.getElementById('child-avatar-preview');
     const titleField = document.getElementById('child-modal-title');
 
     if (editId) {
@@ -308,22 +308,63 @@ export function openChildModal(editId = null) {
         idField.value = c.id;
         nameField.value = c.name;
         dobField.value = c.dob || "";
-        genderField.value = c.gender || "Girl";
-        heightField.value = c.height || "";
-        weightField.value = c.weight || "";
+        genderField.value = c.gender || "Boy";
+        avatarUrlField.value = c.avatar_url || "";
+        
+        if (c.avatar_url) {
+            if (c.avatar_url.startsWith('http')) {
+                avatarPreview.innerHTML = `<img src="${c.avatar_url}" alt="Avatar">`;
+            } else {
+                avatarPreview.innerText = c.avatar_url;
+            }
+        } else {
+            avatarPreview.innerText = (c.gender === 'Boy' ? '👦' : (c.gender === 'Girl' ? '👧' : '👶'));
+        }
+        
         titleField.innerText = "Edit Child Profile";
     } else {
         idField.value = '';
         nameField.value = '';
         dobField.value = '';
-        genderField.value = 'Girl';
-        heightField.value = '';
-        weightField.value = '';
+        genderField.value = 'Boy';
+        avatarUrlField.value = '';
+        avatarPreview.innerText = '👦';
         titleField.innerText = "Add Child Profile";
     }
     
     window.renderManageChildren();
     openModal('modal-child');
+}
+
+export function selectPresetAvatar(emoji) {
+    document.getElementById('child-avatar-url').value = emoji;
+    document.getElementById('child-avatar-preview').innerHTML = emoji;
+}
+
+export async function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+        const url = await uploadAvatar(file);
+        if (url) {
+            document.getElementById('child-avatar-url').value = url;
+            document.getElementById('child-avatar-preview').innerHTML = `<img src="${url}" alt="Avatar">`;
+        }
+    } catch (err) {
+        console.error("Error in handler:", err);
+    }
+}
+
+export function updateDefaultAvatar(gender) {
+    const avatarUrl = document.getElementById('child-avatar-url').value;
+    // Only update if it's currently showing a default emoji and not a custom upload or specific preset
+    const defaultEmojis = ['👦', '👧', '👶'];
+    if (!avatarUrl || defaultEmojis.includes(avatarUrl)) {
+        const newEmoji = gender === 'Boy' ? '👦' : (gender === 'Girl' ? '👧' : '👶');
+        document.getElementById('child-avatar-url').value = newEmoji;
+        document.getElementById('child-avatar-preview').innerText = newEmoji;
+    }
 }
 
 export function openProfileModal() {
@@ -351,6 +392,9 @@ window.handleForgotPassword = handleForgotPassword;
 window.addTimeRow = addTimeRow;
 window.openMedModal = openMedModal;
 window.openChildModal = openChildModal;
+window.handleAvatarUpload = handleAvatarUpload;
+window.selectPresetAvatar = selectPresetAvatar;
+window.updateDefaultAvatar = updateDefaultAvatar;
 window.openProfileModal = openProfileModal;
 window.changeChild = changeChild;
 window.getYYYYMMDD = getYYYYMMDD;

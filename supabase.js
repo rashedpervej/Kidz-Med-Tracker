@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // --- SUPABASE CONFIG ---
-export const supabaseUrl = 'https://lnulafutuyxnaxkteqjv.supabase.co';
-export const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxudWxhZnV0dXl4bmF4a3RlcWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxODIwMzcsImV4cCI6MjA5MDc1ODAzN30.kiHKjMJPueIwCz3hYoqPvL8wxrJpkr1Mk3ASOSzRARk';
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lnulafutuyxnaxkteqjv.supabase.co';
+export const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxudWxhZnV0dXl4bmF4a3RlcWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxODIwMzcsImV4cCI6MjA5MDc1ODAzN30.kiHKjMJPueIwCz3hYoqPvL8wxrJpkr1Mk3ASOSzRARk';
 
 export let supabaseClient;
 
@@ -149,12 +149,21 @@ export async function testConnection() {
         
         if (error) {
             console.error("Supabase connection test failed:", error.message || error.details || "Unknown error");
+            console.dir(error);
             
-            if (error.message === 'Failed to fetch' || (error.status === 0)) {
+            const isFetchError = error.message === 'Failed to fetch' || 
+                               (error.name === 'TypeError' && error.message.includes('fetch')) ||
+                               (error.status === 0 || error.code === 'NETWORK_ERROR');
+
+            if (isFetchError) {
                 console.error("CRITICAL: Supabase endpoint unreachable.");
                 if (window.customAlert) {
                     window.customAlert(
-                        "Database connection failed. This usually means the project is paused or your internet is offline. <br><br>Please check your connection and ensure your Supabase project is active.", 
+                        "<b>Database connection failed.</b><br><br>" +
+                        "This usually means the project is paused or your internet is offline. <br><br>" +
+                        "1. Check if you can open <a href='https://supabase.com/dashboard' target='_blank'>Supabase Dashboard</a>.<br>" +
+                        "2. Ensure your project is active (not paused).<br>" +
+                        "3. Check your internet connection.", 
                         "Connection Error"
                     );
                 }

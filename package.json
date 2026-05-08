@@ -11,6 +11,7 @@
     "lint": "echo 'No linting needed for vanilla JS'"
   },
   "dependencies": {
+    "@google/genai": "^1.52.0",
     "@supabase/supabase-js": "^2.101.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",

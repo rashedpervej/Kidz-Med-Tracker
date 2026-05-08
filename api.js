@@ -4,6 +4,33 @@ import { showLoading, customAlert, customConfirm, closeModal, openModal } from '
 
 const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
 
+function handleSupabaseError(error, customMsg = "Database operation failed") {
+    console.error("Supabase Error Details:", error);
+    
+    const isFetchError = error.message === 'Failed to fetch' || 
+                       (error.name === 'TypeError' && error.message.includes('fetch')) ||
+                       (error.status === 0) ||
+                       (error.message && error.message.includes('NetworkError'));
+
+    if (isFetchError) {
+        console.error("CRITICAL: Supabase endpoint unreachable. The project might be paused.");
+        customAlert(
+            "<div style='text-align:left;'>" +
+            "<b>Database connection failed.</b><br><br>" +
+            "This usually happens for one of two reasons:<br>" +
+            "1. <b>Project Paused:</b> If you haven't used the app for a week, Supabase pauses the project. Log in to <a href='https://supabase.com/dashboard' target='_blank'>Supabase Dashboard</a> and ensure the project is active.<br>" +
+            "2. <b>Network Blocking:</b> Check your internet connection or if a firewall/VPN is blocking Supabase.<br><br>" +
+            "Please refresh the page once the project is active." +
+            "</div>", 
+            "Connection Error"
+        );
+        return true; // Handled
+    }
+    
+    if (customMsg) customAlert(customMsg);
+    return false;
+}
+
 export async function fetchAllData() {
     const user = await getUser();
     if (!user) return;
@@ -132,27 +159,9 @@ export async function fetchAllData() {
         state.logs = logsRes.data || [];
         state.medicineMaster = masterRes.data || [];
     } catch (err) {
-        const isFetchError = err.message === 'Failed to fetch' || 
-                           (err.name === 'TypeError' && err.message.includes('fetch')) ||
-                           (err.status === 0) ||
-                           (err.message && err.message.includes('NetworkError'));
-
-        if (isFetchError) {
-            console.error("CRITICAL: Supabase endpoint unreachable. The project might be paused.");
-            customAlert(
-                "<div style='text-align:left;'>" +
-                "<b>Database connection failed.</b><br><br>" +
-                "This usually happens for one of two reasons:<br>" +
-                "1. <b>Project Paused:</b> If you haven't used the app for a week, Supabase pauses the project. Log in to <a href='https://supabase.com/dashboard' target='_blank'>Supabase Dashboard</a> to restore it.<br>" +
-                "2. <b>No Internet:</b> Check your connection.<br><br>" +
-                "Please refresh the page once the project is active." +
-                "</div>", 
-                "Connection Error"
-            );
-        } else {
-            console.error("Error fetching data:", err.message || err);
+        if (!handleSupabaseError(err, "Error fetching data from server.")) {
+            throw err;
         }
-        throw err;
     }
 }
 
@@ -165,29 +174,21 @@ export async function saveChild() {
     const name = document.getElementById('child-name').value.trim();
     const dob = document.getElementById('child-dob').value;
     const gender = document.getElementById('child-gender').value;
-    const height = document.getElementById('child-height').value;
-    const weight = document.getElementById('child-weight').value;
+    const avatar_url = document.getElementById('child-avatar-url').value;
     
     if(!name) return customAlert("Name is required");
 
     showLoading(true);
     try {
-        const childObj = { 
+        const fullObj = { 
             name, 
             dob: dob || null, 
-            user_id: uid 
-        };
-
-        // These are new columns that might not exist in the user's Supabase schema yet
-        const optionalFields = {
+            user_id: uid,
             gender: gender || null,
-            height: height ? parseFloat(height) : null,
-            weight: weight ? parseFloat(weight) : null
+            avatar_url: avatar_url || null
         };
 
         let result;
-        const fullObj = { ...childObj, ...optionalFields };
-
         if (id) {
             result = await supabaseClient.from('children').update(fullObj).eq('id', id).eq('user_id', uid).select();
         } else {
@@ -197,15 +198,15 @@ export async function saveChild() {
         // Handle missing columns error gracefully
         if (result.error && (result.error.message.includes('column') || result.error.code === '42703' || result.error.message.includes('schema cache'))) {
             console.warn("Missing optional columns in 'children' table. Retrying with basic fields...", result.error.message);
-            
+            const basicObj = { name, dob: dob || null, user_id: uid };
             if (id) {
-                result = await supabaseClient.from('children').update(childObj).eq('id', id).eq('user_id', uid).select();
+                result = await supabaseClient.from('children').update(basicObj).eq('id', id).eq('user_id', uid).select();
             } else {
-                result = await supabaseClient.from('children').insert([childObj]).select();
+                result = await supabaseClient.from('children').insert([basicObj]).select();
             }
             
             if (!result.error) {
-                customAlert("Profile saved, but some data (gender, height, weight) couldn't be stored. Please update your database schema in Supabase.", "Schema Notice");
+                customAlert("Profile saved, but some data (gender, avatar) couldn't be stored. Please update your database schema in Supabase.", "Schema Notice");
             }
         }
 
@@ -235,8 +236,7 @@ export async function saveChild() {
         
         customAlert(id ? "Child profile updated!" : "Child profile added!");
     } catch (err) {
-        console.error("Error saving child:", err.message || err);
-        customAlert("Failed to save child profile.");
+        handleSupabaseError(err, "Failed to save child profile.");
     } finally {
         showLoading(false);
     }
@@ -268,8 +268,7 @@ export async function deleteChild(id) {
             window.renderAllViews();
             if(!state.activeChildId) window.openChildModal();
         } catch (err) {
-            console.error("Error deleting child:", err.message || err);
-            customAlert("Failed to delete child profile.");
+            handleSupabaseError(err, "Failed to delete child profile.");
         } finally {
             showLoading(false);
         }
@@ -514,8 +513,7 @@ export async function saveIssue(silent = false) {
         window.renderAllViews();
         customAlert(id ? "Issue updated successfully!" : "New issue created!");
     } catch (err) {
-        console.error("Final Error saving issue:", err);
-        customAlert(`Error: ${err.message || "Failed to save issue. Check console for details."}`);
+        handleSupabaseError(err, "Failed to save issue.");
     } finally {
         showLoading(false);
     }
@@ -542,8 +540,7 @@ export async function softDeleteIssue(id) {
         window.renderAllViews();
         customAlert("Issue moved to Trash.");
     } catch (err) {
-        console.error("Error moving issue to trash:", err.message || err);
-        customAlert("Failed to move issue to trash.");
+        handleSupabaseError(err, "Failed to move issue to trash.");
     } finally {
         showLoading(false);
     }
@@ -570,8 +567,7 @@ export async function restoreIssue(id) {
         window.renderAllViews();
         customAlert("Issue restored successfully!");
     } catch (err) {
-        console.error("Error restoring issue:", err.message || err);
-        customAlert("Failed to restore issue.");
+        handleSupabaseError(err, "Failed to restore issue.");
     } finally {
         showLoading(false);
     }
@@ -650,12 +646,11 @@ export async function permanentlyDeleteIssue(id) {
             state.issues = state.issues.filter(i => i.id.toString() !== id.toString());
             state.medicines = state.medicines.filter(m => !medIdsStr.includes(m.id.toString()));
             state.logs = state.logs.filter(l => l.issue_id?.toString() !== id.toString() && !medIdsStr.includes(l.medicine_id?.toString()));
-
+    
             window.renderAllViews();
             customAlert("Issue and all related data deleted permanently!");
         } catch (err) {
-            console.error("Error deleting issue permanently:", err.message || err);
-            customAlert("Failed to delete issue permanently.");
+            handleSupabaseError(err, "Failed to delete issue permanently.");
         } finally {
             showLoading(false);
         }
@@ -666,22 +661,93 @@ export function deleteIssue(id) {
     softDeleteIssue(id);
 }
 
-export async function saveMed() {
+export async function saveMedicine(medData) {
     const user = await getUser();
     if (!user) return;
     const uid = user.id;
 
-    const id = document.getElementById('med-id').value;
+    const { id, name, start_date, end_date, issue_id, meet_id, times, dosage_value, dosage_unit } = medData;
+    const dosage = `${dosage_value} ${dosage_unit}`;
+
+    // Smart Medicine Input: Check/Insert into medicine_master (Graceful failure for RLS)
+    try {
+        const existingMaster = state.medicineMaster.find(m => m.name.toLowerCase() === name.toLowerCase());
+        if (!existingMaster) {
+            const { data: masterData, error: masterError } = await supabaseClient
+                .from('medicine_master')
+                .upsert([{ name }], { onConflict: 'name' })
+                .select();
+            
+            if (!masterError && masterData && masterData.length > 0) {
+                if (!state.medicineMaster.find(m => m.id === masterData[0].id)) {
+                    state.medicineMaster.push(masterData[0]);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Could not update medicine_master (likely RLS restriction):", err);
+    }
+
+    const issue = state.issues.find(i => i.id.toString() === issue_id.toString());
+    const latestMeet = issue && issue.meets ? issue.meets[issue.meets.length - 1] : null;
+
+    const medObj = {
+        child_id: state.activeChildId,
+        name, 
+        dosage, 
+        start_date, 
+        end_date, 
+        times,
+        issue_id,
+        meet_id: (meet_id && meet_id !== 'initial') ? meet_id : (latestMeet && latestMeet.id !== 'initial' ? latestMeet.id : null),
+        user_id: uid
+    };
+
+    let result;
+    if (id) {
+        result = await supabaseClient.from('medicines').update(medObj).eq('id', id).eq('user_id', uid).select();
+    } else {
+        result = await supabaseClient.from('medicines').insert([medObj]).select();
+    }
+
+    if (result.error) throw result.error;
+
+    let savedMed = result.data[0];
+    if (typeof savedMed.times === 'string') {
+        try { savedMed.times = JSON.parse(savedMed.times); } catch(e) { savedMed.times = []; }
+    }
+    if (!Array.isArray(savedMed.times)) savedMed.times = [];
+
+    // Link to latest meet if needed
+    if (!id && issue && issue.meets && issue.meets.length > 0) {
+        const latestMeet = issue.meets[issue.meets.length - 1];
+        if (latestMeet && latestMeet.id && latestMeet.id !== 'initial') {
+            await supabaseClient.from('medicines')
+                .update({ meet_id: latestMeet.id })
+                .eq('id', savedMed.id);
+            savedMed.meet_id = latestMeet.id;
+        }
+    }
+
+    if (id) {
+        const idx = state.medicines.findIndex(m => m.id.toString() === id.toString());
+        if (idx !== -1) state.medicines[idx] = savedMed;
+    } else {
+        state.medicines.push(savedMed);
+    }
+    return savedMed;
+}
+
+export async function saveMed() {
     const name = document.getElementById('med-name').value.trim();
     const dosageValue = document.getElementById('med-dosage').value.trim();
     const dosageUnit = document.getElementById('med-dosage-unit').value;
-    const dosage = `${dosageValue} ${dosageUnit}`;
-
     const start_date = document.getElementById('med-start').value;
     const end_date = document.getElementById('med-end').value;
     const issue_id = document.getElementById('med-issue-id').value;
     const meet_id = document.getElementById('med-meet-id').value;
-    
+    const id = document.getElementById('med-id').value;
+
     if (!issue_id) return customAlert("Please create and select an active issue first.");
 
     const timeInputs = document.querySelectorAll('.med-time-input');
@@ -693,80 +759,17 @@ export async function saveMed() {
 
     showLoading(true);
     try {
-        // Smart Medicine Input: Check/Insert into medicine_master (Graceful failure for RLS)
-        try {
-            const existingMaster = state.medicineMaster.find(m => m.name.toLowerCase() === name.toLowerCase());
-            if (!existingMaster) {
-                const { data: masterData, error: masterError } = await supabaseClient
-                    .from('medicine_master')
-                    .upsert([{ name }], { onConflict: 'name' })
-                    .select();
-                
-                if (!masterError && masterData && masterData.length > 0) {
-                    if (!state.medicineMaster.find(m => m.id === masterData[0].id)) {
-                        state.medicineMaster.push(masterData[0]);
-                    }
-                } else if (masterError) {
-                    console.warn("Medicine master update skipped:", masterError.message);
-                }
-            }
-        } catch (err) {
-            console.warn("Could not update medicine_master (likely RLS restriction):", err);
-            // We ignore this error as medicine_master is just for autocomplete suggestions
-        }
-
-        const issue = state.issues.find(i => i.id.toString() === issue_id.toString());
-        const latestMeet = issue && issue.meets ? issue.meets[issue.meets.length - 1] : null;
-
-        const medObj = {
-            child_id: state.activeChildId,
-            name, 
-            dosage, 
-            start_date, 
-            end_date, 
-            times,
+        await saveMedicine({
+            id: id || null,
+            name,
+            dosage_value: dosageValue,
+            dosage_unit: dosageUnit,
+            start_date,
+            end_date,
             issue_id,
-            meet_id: (meet_id && meet_id !== 'initial') ? meet_id : (latestMeet && latestMeet.id !== 'initial' ? latestMeet.id : null),
-            user_id: uid
-        };
-
-        let result;
-        if (id) {
-            result = await supabaseClient.from('medicines').update(medObj).eq('id', id).eq('user_id', uid).select();
-        } else {
-            result = await supabaseClient.from('medicines').insert([medObj]).select();
-        }
-
-        if (result.error) throw result.error;
-
-        let savedMed = result.data[0];
-        if (typeof savedMed.times === 'string') {
-            try { savedMed.times = JSON.parse(savedMed.times); } catch(e) { savedMed.times = []; }
-        }
-        if (!Array.isArray(savedMed.times)) savedMed.times = [];
-
-        // Update issue meets to include this medicine if it's new
-        if (!id) {
-            const issue = state.issues.find(i => i.id.toString() === issue_id.toString());
-            if (issue && issue.meets && issue.meets.length > 0) {
-                const latestMeet = issue.meets[issue.meets.length - 1];
-                if (latestMeet && latestMeet.id && latestMeet.id !== 'initial') {
-                    // Update the medicine with the meet_id directly
-                    await supabaseClient.from('medicines')
-                        .update({ meet_id: latestMeet.id })
-                        .eq('id', savedMed.id);
-                    
-                    savedMed.meet_id = latestMeet.id;
-                }
-            }
-        }
-
-        if (id) {
-            const idx = state.medicines.findIndex(m => m.id.toString() === id.toString());
-            if (idx !== -1) state.medicines[idx] = savedMed;
-        } else {
-            state.medicines.push(savedMed);
-        }
+            meet_id,
+            times
+        });
 
         closeModal('modal-med');
         if (typeof window.refreshIssueReuseList === 'function') {
@@ -775,8 +778,7 @@ export async function saveMed() {
         window.renderAllViews();
         customAlert(id ? "Medicine updated!" : "Medicine added!");
     } catch (err) {
-        console.error("Error saving medicine:", err.message || err);
-        customAlert("Failed to save medicine.");
+        handleSupabaseError(err, "Failed to save medicine.");
     } finally {
         showLoading(false);
     }
@@ -796,8 +798,7 @@ export async function deleteMed(id) {
             state.medicines = state.medicines.filter(m => m.id.toString() !== id.toString());
             window.renderAllViews();
         } catch (err) {
-            console.error("Error deleting medicine:", err.message || err);
-            customAlert("Failed to delete medicine.");
+            handleSupabaseError(err, "Failed to delete medicine.");
         } finally {
             showLoading(false);
         }
@@ -832,8 +833,7 @@ export async function markMed(medicine_id, time, status) {
         state.logs.push(data[0]);
         window.renderAllViews();
     } catch (err) {
-        console.error("Error logging medicine:", err.message || err);
-        customAlert("Failed to log medicine.");
+        handleSupabaseError(err, "Failed to log medicine.");
     } finally {
         showLoading(false);
     }
@@ -852,8 +852,7 @@ export async function undoLog(logId) {
         state.logs = state.logs.filter(l => l.id !== logId);
         window.renderAllViews();
     } catch (err) {
-        console.error("Error undoing log:", err.message || err);
-        customAlert("Failed to undo log.");
+        handleSupabaseError(err, "Failed to undo log.");
     } finally {
         showLoading(false);
     }
@@ -909,8 +908,7 @@ export async function saveProfile() {
         if (window.renderProfile) window.renderProfile();
         customAlert("Profile updated successfully!");
     } catch (err) {
-        console.error("Error updating profile:", err);
-        customAlert("Failed to update profile: " + (err.message || err));
+        handleSupabaseError(err, "Failed to update profile.");
     } finally {
         showLoading(false);
     }
@@ -928,3 +926,33 @@ window.deleteIssue = deleteIssue;
 window.softDeleteIssue = softDeleteIssue;
 window.restoreIssue = restoreIssue;
 window.permanentlyDeleteIssue = permanentlyDeleteIssue;
+
+export async function uploadAvatar(file) {
+    const user = await getUser();
+    if (!user) return;
+    const uid = user.id;
+
+    showLoading(true);
+    try {
+        const fileName = `${uid}/${Date.now()}_child_avatar.jpg`;
+        const url = await uploadImage('child-avatars', fileName, file);
+        return url;
+    } catch (err) {
+        console.error("Avatar upload failed:", err);
+        if (err.message && (err.message.includes('row-level security') || err.message.includes('RLS'))) {
+            customAlert(
+                "Upload failed: Permission denied (RLS Policy).<br><br>" +
+                "You need to set up Storage Policies in Supabase.<br>" +
+                "See <b>supabase_storage_setup.sql</b> in the file explorer for the required SQL commands.",
+                "Permissions Error"
+            );
+        } else {
+            customAlert("Failed to upload photo: " + (err.message || "Unknown error"));
+        }
+        return null;
+    } finally {
+        showLoading(false);
+    }
+}
+
+window.uploadAvatar = uploadAvatar;

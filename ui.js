@@ -924,6 +924,7 @@ export function renderPrescriptionPreviews() {
         <div style="position: relative; width: 80px; height: 80px;">
             <img src="${src}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer;" onclick="zoomImage(this.src)">
             <button type="button" class="btn-red btn-small" style="position: absolute; top: -5px; right: -5px; border-radius: 50%; width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;" onclick="removeIssueImage(${idx})">✕</button>
+            <button type="button" class="btn btn-primary" style="position: absolute; bottom: 0; left: 0; right: 0; font-size: 8px; padding: 2px; border-radius: 0 0 8px 8px; opacity: 0.9;" onclick="window.runPrescriptionAnalysis('${src}')">✨ Analyze</button>
         </div>
     `).join('');
 
@@ -1317,3 +1318,62 @@ window.togglePasswordVisibility = togglePasswordVisibility;
 window.handleForgotPassword = handleForgotPassword;
 window.handleUpdatePassword = handleUpdatePassword;
 window.handleResetPasswordSubmit = handleResetPasswordSubmit;
+
+export async function runPrescriptionAnalysis(imageUrl) {
+    const { analyzePrescription, showAIResults } = await import('./ai.js');
+    const results = await analyzePrescription(imageUrl);
+    if (results && results.length > 0) {
+        showAIResults(results);
+    } else {
+        customAlert("No medicines detected or AI analysis failed. Please check the image quality.", "Analysis complete");
+    }
+}
+
+window.runPrescriptionAnalysis = runPrescriptionAnalysis;
+
+export async function handleAIResultsConfirmed(selectedMeds) {
+    const issueId = document.getElementById('issue-id').value;
+    const meetId = document.getElementById('issue-meet-id').value;
+
+    if (!issueId && !meetId) {
+        return customAlert("Please save or load an Issue first before adding medicines from AI analysis.");
+    }
+
+    try {
+        showLoading(true);
+        const { saveMedicine } = await import('./api.js');
+        
+        for (const med of selectedMeds) {
+            // Transform AI med to tracker format
+            const medData = {
+                id: null, // New medicine
+                child_id: state.activeChildId,
+                issue_id: issueId,
+                meet_id: meetId === 'new' ? null : meetId,
+                name: med.name,
+                dosage_value: med.dosageValue || "0",
+                dosage_unit: med.dosageUnit || "ml",
+                times: med.times,
+                start_date: getYYYYMMDD(new Date()),
+                end_date: getYYYYMMDD(new Date(Date.now() + med.durationDays * 24 * 60 * 60 * 1000)),
+                duration_days: med.durationDays
+            };
+            await saveMedicine(medData);
+        }
+        
+        customAlert(`Successfully added ${selectedMeds.length} medicines to the tracker.`, "AI Sync Success");
+        
+        // Refresh UI
+        if (window.renderMeds) window.renderMeds();
+        if (window.renderTimeline) window.renderTimeline();
+        if (window.renderIssues) window.renderIssues();
+        
+    } catch (err) {
+        console.error("Failed to save AI results:", err);
+        customAlert("Failed to save some medicines to the tracker. Check console for details.");
+    } finally {
+        showLoading(false);
+    }
+}
+
+window.handleAIResultsConfirmed = handleAIResultsConfirmed;

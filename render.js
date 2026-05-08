@@ -97,7 +97,17 @@ export function renderHome() {
 
     const activeChild = state.children.find(c => c.id.toString() === state.activeChildId.toString());
     if (activeChild && profileContainer) {
-        const initials = activeChild.name ? activeChild.name[0].toUpperCase() : '?';
+        let avatarHtml = '';
+        if (activeChild.avatar_url) {
+            if (activeChild.avatar_url.startsWith('http')) {
+                avatarHtml = `<img src="${activeChild.avatar_url}" alt="${activeChild.name}">`;
+            } else {
+                avatarHtml = activeChild.avatar_url; // Preset emoji
+            }
+        } else {
+            avatarHtml = activeChild.gender === 'Boy' ? '👦' : (activeChild.gender === 'Girl' ? '👧' : '👶');
+        }
+        
         const ageObj = activeChild.dob ? getDetailedAge(activeChild.dob) : { main: 'N/A', unit: '', sub: '' };
         
         // --- Calculate Dynamic Health Summary ---
@@ -219,7 +229,7 @@ export function renderHome() {
                 <div class="card-layout-main">
                     <div class="card-left">
                         <div class="identity-section">
-                            <div class="child-avatar-large">${initials}</div>
+                            <div class="child-avatar-large">${avatarHtml}</div>
                             <div class="child-name-meta">
                                 <h2 class="child-name">${activeChild.name}</h2>
                                 <span class="child-meta">Baby ${activeChild.gender || 'Girl'}</span>
@@ -599,13 +609,25 @@ export function renderCompactChildHeader(container) {
         return;
     }
     
+    let avatarHtml = '';
+    if (activeChild.avatar_url) {
+        if (activeChild.avatar_url.startsWith('http')) {
+            avatarHtml = `<img src="${activeChild.avatar_url}" alt="${activeChild.name}">`;
+        } else {
+            avatarHtml = activeChild.avatar_url; // Preset emoji
+        }
+    } else {
+        avatarHtml = activeChild.gender === 'Boy' ? '👦' : (activeChild.gender === 'Girl' ? '👧' : '👶');
+    }
+
     container.style.display = 'flex';
     
     container.innerHTML = `
         <div class="compact-child-info">
             <span class="compact-app-title">Medz Diary</span>
         </div>
-        <div class="compact-child-name-right" onclick="window.openChildModal()">
+        <div class="compact-child-name-right" onclick="window.openChildModal()" style="display: flex; align-items: center; gap: 8px;">
+            <div class="compact-child-avatar">${avatarHtml}</div>
             ${activeChild.name}
         </div>
     `;
